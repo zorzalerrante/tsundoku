@@ -1,0 +1,675 @@
+[male]
+title = 'Hombres'
+undisclosed_title = 'Sin Determinar'
+threshold = 0.55
+
+[male.user_name]
+must_have = [
+    'mr.',
+    'sr.',
+    'don',
+    'carlos',
+    'josé',
+    'felipe',
+    'pablo',
+    'césar',
+    'osvaldo',
+    'eduardo',
+    'edu',
+    'ricardo',
+    'juan',
+    'francisco',
+    'claudio',
+    'diego',
+    'jorge',
+    'daniel',
+    'david',
+    'gonzalo',
+    'sebastián',
+    'pedro',
+    'patricio',
+    'pato',
+    'gabriel',
+    'rodrigo',
+    'luis',
+    'cristian',
+    'marcelo',
+    'alejandro',
+    'sergio',
+    'fernando',
+    'ignacio',
+    'seba',
+    'sebastian',
+    'víctor',
+    'victor',
+    'jaime',
+    'mauricio',
+    'miguel',
+    'javier',
+    'andrés',
+    'nicolás',
+    'manuel',
+    'manolo',
+    'mario',
+    'andres',
+    'guillermo',
+    'guille',
+    'roberto',
+    'oscar',
+    'óscar',
+    'matías',
+    'christian',
+    'álvaro',
+    'alvaro',
+    'antonio',
+    'gustavo',
+    'marco',
+    'esteban',
+    'camilo',
+    'matias',
+    'alfredo',
+    'alberto',
+    'hugo',
+    'enrique',
+    'rafael',
+    'hector',
+    'anton',
+    'denis',
+    'belisario',
+    'reinaldo',
+    'félix',
+    'felix',
+    'rigo',
+    'pepe',
+    'mike',
+    'jimmy',
+    'samuel',
+    'james',
+    'franco',
+    'waldo',
+    'emilio',
+    'emiliano',
+    'lorenzo',
+    'gastón',
+    'gaston',
+    'tito',
+    'kike',
+    'rubén',
+    'ruben',
+    'octavio',
+    'germán',
+    'german',
+    'bernardo',
+    'moisés',
+    'moises',
+    'pelayo',
+    'aldo',
+    'boris',
+    'cristopher',
+    'christian',
+    'cristián',
+    'cristobal',
+    'cristóbal',
+    'bernardino',
+    'arturo',
+    'cesar',
+    'césar',
+    'jhon',
+    'isidoro',
+    'rene',
+    'rené',
+    'juvenal',
+    'leandro',
+    'wilo',
+    'saúl',
+    'saul',
+    'ismael',
+    'joel',
+    'max',
+    'maximiliano',
+    'hermán',
+    'herman',
+    'hermann',
+    'raúl',
+    'raul',
+    'marcos',
+    'marco',
+    'norberto',
+    'henrique',
+    'mauro',
+    'freddy',
+    'alfonso',
+    'alonso',
+    'richard',
+    'rolando',
+    'fabián',
+    'fabian',
+    'nelson',
+    'hans',
+    'tomás',
+    'tomas',
+    'leo',
+    'leonardo',
+    'rodolfo',
+    'martín',
+    'aldo',
+    'ciro',
+    'waldo',
+    'beto',
+    'edgard',
+    'edgardo',
+    'danilo',
+    'iván',
+    'ivan',
+    'walter',
+]
+
+[male.description_token]
+must_have = [
+    'santiaguino',
+    'porteño',
+    'iquiqueño',
+    'padre',
+    'profesor',
+    'ingeniero',
+    'hombre',
+    'abogado',
+    'papá',
+    'colocolino',
+    'hija',
+    'casado',
+    'esposo',
+    'orgulloso',
+    'sureño',
+    'patagón',
+    'magallánico',
+    'osornino',
+    'rancaguino',
+    'viñamarino',
+    'evertoniano',
+    'apolítico',
+    'trabajador',
+    'hombre',
+    'diputado',
+    'senador',
+    'escritor',
+    'abuelo',
+    'profesor',
+    'soñador',
+    'viajero',
+    'enamorado',
+    'agradecido',
+    'diseñador',
+    'pelirrojo',
+    'desarrollador',
+    'bombero',
+    'aficionado',
+    'futbolero',
+    'dueño',
+    'curicano',
+    'educador',
+    'psicólogo',
+    'psicologo',
+    'director',
+    'defensor',
+    'candidato',
+    'secretario',
+    'tesorero',
+    'apasionado',
+    'licenciado',
+    'empresario',
+    'experto',
+    'nacido',
+    'chuncho',
+]
+
+[female]
+title = 'Mujeres'
+
+[female.user_name]
+must_have = [
+    'sra.',
+    'srta.',
+    'doña',
+    'carolina',
+    'andrea',
+    'maría',
+    'paula',
+    'claudia',
+    'clau',
+    'patricia',
+    'paz',
+    'maría',
+    'daniela',
+    'valentina',
+    'camila',
+    'marcela',
+    'marce',
+    'alejandra',
+    'francisca',
+    'fran',
+    'ana',
+    'anna',
+    'catalina',
+    'cata',
+    'cati',
+    'cathy',
+    'katy',
+    'kathy',
+    'katherine',
+    'constanza',
+    'coni',
+    'paulina',
+    'maria',
+    'dani',
+    'caro',
+    'natalia',
+    'pamela',
+    'isabel',
+    'pilar',
+    'sandra',
+    'paola',
+    'pao',
+    'valeria',
+    'vale',
+    'cami',
+    'karen',
+    'carla',
+    'karla',
+    'cecilia',
+    'ceci',
+    'gloria',
+    'laura',
+    'lara',
+    'carola',
+    'tere',
+    'teresa',
+    'teresita',
+    'teruca',
+    'naty',
+    'nataly',
+    'nati',
+    'pame',
+    'denisse',
+    'rosa',
+    'nicole',
+    'elizabeth',
+    'sofía',
+    'sofi',
+    'carmen',
+    'elena',
+    'ignacia',
+    'eugenia',
+    'fernanda',
+    'jeanne',
+    'feña',
+    'pau',
+    'pauli',
+    'pao',
+    'jocelyn',
+    'quena',
+    'mariana',
+    'mary',
+    'lorena',
+    'lore',
+    'jani',
+    'yasna',
+    'donka',
+    'darinka',
+    'fabiola',
+    'erica',
+    'erika',
+    'debbie',
+    'alexandra',
+    'consuelo',
+    'consu',
+    'antonia',
+    'josefina',
+    'josefa',
+    'agustina',
+    'priscila',
+    'helia',
+    'florencia',
+    'gabriela',
+    'arelis',
+    'mónica',
+    'monica',
+    'moni',
+    'monni',
+    'viviana',
+    'vivi',
+    'vanesa',
+    'vanessa',
+    'vane',
+    'marisela',
+    'maricarmen',
+    'evelyn',
+    'clara',
+    'mireya',
+    'miranda',
+    'melisa',
+    'melissa',
+    'meli',
+    'angélica',
+    'angelica',
+    'ange',
+    'verónica',
+    'veronica',
+    'vero',
+    'verito',
+    'marcia',
+    'ivania',
+    'yvannia',
+    'anais',
+    'anaís',
+    'antonieta',
+    'berna',
+    'bernarda',
+    'bernardita',
+    'bernardeta',
+    'bárbara',
+    'barbara',
+    'barb',
+    'maca',
+    'macarena',
+    'maka',
+    'manuela',
+    'marisol',
+    'soledad',
+    'sole',
+    'diana',
+    'dayana',
+    'elvira',
+    'javiera',
+    'silvia',
+    'silvana',
+    'silvi',
+    'georgia',
+    'georgina',
+    'zulma',
+    'margarita',
+    'bernardina',
+    'doris',
+    'alba',
+    'tatiana',
+    'tati',
+    'mirna',
+    'isidora',
+    'isi',
+    'zuly',
+    'marta',
+    'martuca',
+    'jimena',
+    'jime',
+    'ximena',
+    'xime',
+    'elisa',
+    'maritza',
+    'mar',
+    'marjorie',
+    'montserrat',
+    'monserrat',
+    'monse',
+    'maggie',
+    'ellen',
+    'jennifer',
+    'jenni',
+    'maripa',
+    'cristina',
+    'cristi',
+    'ingrid',
+    'lilian',
+    'lily',
+    'tamara',
+    'tamy',
+    'tami',
+    'mercedes',
+    'tania',
+    'luisa',
+    'alicia',
+    'gladys',
+    'nancy',
+    'eliana',
+    'isabel',
+    'ester',
+    'vera',
+    'laura',
+    'brenda',
+    'nicole',
+    'carlota',
+    'trinidad',
+    'trini',
+    'rocío',
+    'piliq',
+    'eva',
+    'magdalena',
+    'magda',
+    'michelle',
+    'susana',
+    'susi',
+    'susy',
+    'luz',
+    'victoria',
+    'vicky',
+    'connie',
+    'mirna',
+    'johanna',
+    'huacha',
+    'colomba',
+    'adela',
+    'muriel',
+    'matilde',
+    'maite',
+    'jesu',
+    'beatriz',
+    'bea',
+    'loreto',
+    'lore',
+    'yerka',
+    'oriana',
+    'danila',
+    'naya',
+    'melody',
+    'cynthia',
+    'martha',
+]
+
+[female.description_token]
+must_have = [
+    'santiaguina',
+    'porteña',
+    'iquiqueña',
+    'madre',
+    'profesora',
+    'ingeniera',
+    'mujer',
+    'abogada',
+    'mamá',
+    'colocolina',
+    'hijo',
+    'casada',
+    'esposa',
+    'orgullosa',
+    'sureña',
+    'patagona',
+    'magallánica',
+    'osornina',
+    'rancaguina',
+    'viñamarina',
+    'evertoniana',
+    'apolítica',
+    'trabajadora',
+    'mujer',
+    'diputada',
+    'senadora',
+    'escritora',
+    'abuela',
+    'profesora',
+    'soñadora',
+    'viajera',
+    'enamorada',
+    'agradecida',
+    'diseñadora',
+    'pelirroja',
+    'desarrolladora',
+    'bombera',
+    'aficionada',
+    'futbolera',
+    'dueña',
+    'constructora',
+    'curicana',
+    'educadora',
+    'psicóloga',
+    'psicologa',
+    'directora',
+    'defensora',
+    'presidenta',
+    'candidata',
+    'secretaria',
+    'tesorera',
+    'apasionada',
+    'licenciada',
+    'empresaria',
+    'experta',
+    'nacida',
+    'chuncha',
+]
+
+[institutional]
+title = 'Instituciones y Medios'
+
+[institutional.user_name]
+must_have = [
+    'noticias',
+    'radio',
+    'diario',
+    'municipalidad',
+    'gobernación',
+    'partido',
+    'ministerio',
+    'fundación',
+    'informativo',
+]
+
+[institutional.profile_domain]
+must_have = ['gob.cl']
+
+[institutional.account_ids]
+known_users = [
+    # instituciones
+    389514560,           # MinDep
+    2544154506,          # Sub_Interior
+    973267023869378560,  # SubseBBNN
+    145964997,           # previsionsocial
+    2452041012,          # MinMineria_cl
+    128072977,           # ANFUCULTURA
+    204441838,           # SubseHacienda
+    518787221,           # Segpres
+    153825949,           # ministeriosalud
+    374124320,           # SubPrevDelito
+    1116042742755463170, # MH_Nuble
+    1082719154719870977, # AFURED1
+    1300894488,          # Senadis_Aysen
+    176918834,           # Senda_gob
+    3010576779,          # MinjudhAraucan
+    2541891204,          # Minjudhbiobio
+    1182980954,          # SenadisAraucani
+    144360798,           # Gendarmeria_CL
+    1071014436851384321, # Regcivil_Arica
+    976502448,           # VoceriaCoquimbo
+    115090913,           # voceriagobierno
+    201740844,           # dos_segegob
+    2987431247,          # segegobT
+    1596764154,          # MinagriAtacama
+    115091645,           # MinDesarrollo
+    268301199,           # VoceriaAntofa
+    701742308492972033,  # GobUEsperanza
+    2532998827,          # govpetorca
+    285205857,           # gob_margamarga
+    367475485,           # gobTalca
+    3093565340,          # Gob_Curico
+    366734133,           # gobmagallanes
+    329165051,           # Gobernaciomaipo
+    838229749,           # dicoex
+    981956241370091521,  # VoceriaOHiggins
+    1209376609,          # VoceriaLosLagos
+    272740418,           # MDSMagallanes
+    632074185,           # SENADIS12
+    1300682136,          # Senadis_Valpo
+    823434512,           # VoceriaAtacama
+    1207643648344707072, # SubseMMA
+    73459349,            # metrodesantiago
+    62937960,            # PDI_CHILE
+    # medios
+    31808468,            # La Tercera Video
+    811277893062029313,  # PortalesdeValpo
+    71758708,            # RADIONOSTALGICA
+    1598911082,          # bahiaradio1
+    1228450294230650880, # RCIRadioChile2
+    1239386308755238912, # lila_radio
+    840369925,           # laradioonline
+    1134844927664435200, # radiomaipo
+    88695394,            # RadioIslaFM
+    940933520855392257,  # Pauta_cl
+    1227786506493927424, # SomosNoticiaCL
+    1271146242580656132, # EstadodeS
+    253784950,           # TvImagiaChile
+    216436927,           # canal13
+    323660937,           # Canal_21tv
+    78058372,            # uchileradio
+    201493641,           # adnradiochile
+    237299699,           # radiousach
+    3129768538,          # Tele13_Radio
+    267933419,           # conciertoradio
+    809093575816466432,  # mirasol_radio
+    113211624,           # radio_santiago
+    90227660,            # 24HorasTVN
+    124266832,           # chilevision
+    86958006,            # thecliniccl
+    58048133,            # meganoticiascl
+    51326671,            # chvnoticias
+    54115409,            # PublimetroChile
+    3223771,             # lacuarta
+    10283902,            # nacioncl
+    174063327,           # Transantiago
+    103074420,           # CDF_CL,
+    1323223190,          # ElMercurio_cl
+    62164975,            # mercurioafta
+    61812299,            # mercuriovalpo
+    14445094,            # El_Ciudadano
+    31622299,            # RadioValparaiso
+    1244695782231609345, # diario_arica
+    # other
+    194825957, # colocolodetodos
+    284867136, # colocolonoticia
+    34658505,  # movilh
+    372872792, # mentiraslared
+    #
+    1219821715997499392, # JRechazobiobio
+    4060622956,          # anatrapbiobio
+    1108144807602520064, # biobio_region
+    1301272724455723008, # udi_araucania
+    3377432242,          # anefaraucania
+    737822669991759872,  # jppd_araucania
+    1567381195,          # diariocalama
+    2670786799,          # anef_atacama
+    442209771,           # ANFPChile
+    3007937309,          # notix_cl
+    #
+    3090538753,         # OIMChile
+    396796970,          # SJMChile
+    803265777981853696, # SomosFre
+    3938222837,         # MigrantesChile
+    22445423089160192,  # migrantesUCM
+    2541619854,         # MAM_Chile
+    2391672396,         # ColombiayyChile
+    854755435257135107, # InmigranDerecho
+    607599017,          # INCAMIChile
+    105197626,          # Ejercito_Chile
+    119844526,          # ONU_es
+    306245721,          # UNESCO_es
+    171619651,          # lafundacionsol
+    890304367,          # dixit_io
+    138914492,          # clublider
+    395585075,          # DIARIOCHILE
+]

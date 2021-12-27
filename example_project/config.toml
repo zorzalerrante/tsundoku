@@ -1,0 +1,18 @@
+[project]
+name = "Example Project"
+
+[project.path]
+config = "/home/egraells/repositories/tsundoku/example_project"
+data = "/home/egraells/repositories/tsundoku/example_project/data"
+    
+[project.content]
+term_files = ["keywords.txt"]
+accepted_lang = ["es"]
+timezone = "America/Santiago"
+
+[project.content.user_matrix]
+stopwords_file = "stopwords.txt"
+lru_size = 500
+
+[project.environment]
+n_jobs = 2

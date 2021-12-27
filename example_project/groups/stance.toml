@@ -1,0 +1,159 @@
+[boric]
+title = 'Gabriel Boric'
+order = ['boric', 'undisclosed', 'kast']
+undisclosed_title = 'Indecisos(as)/Sin Postura Explícita'
+
+[boric.user_name]
+must_have = [
+    '#apruebo',
+    '#apruebocc',
+    '#yoapruebo',
+    '#sipoapruebo',
+    '#yoapruebocc',
+    '#apruebonuevaconstitucion',
+    '#yoapruebonuevaconstitucion',
+    '#yoapruebonuevaconstitución',
+    '#apruebonuevaconstitución',
+    '#convencionconstitucional',
+    '#convenciónconstitucional',
+    '#boricpresidente',
+    '#boric2022',
+    '#boricpresidente',
+    '#boricpresidente2022',
+    '#meunoconboric',
+    '#seguimos',
+    '#boric2022',
+    '#votoboric',
+    '#votaboric',
+    '#vamosxboric',
+    '#vota1',
+]
+
+[boric.description_token]
+must_have = [
+    '#apruebo',
+    '#convencionconstitucional',
+    '#convenciónconstitucional',
+    '#yoapruebocc',
+    '#boricpresidente',
+    '#boric2022',
+    '#boricpresidentedechile2022',
+    '#boricpresidentedechile',
+    '#boricpresidente',
+    '#boricpresidente2022',
+    '#meunoconboric',
+    '#seguimos',
+    '#boric2022',
+]
+
+[boric.tweet_tokens]
+must_have = [
+    '#boricpresidente',
+    '#boric2022',
+    '#boricpresidentedechile2022',
+    '#boricpresidentedechile',
+    '#boricpresidente2022',
+    '#1millondepuertasxboric',
+    '#seguimos',
+    '#rutaesperanzaxboric',
+    '#boricparavivirmejor',
+    '#boricnosune',
+]
+
+[boric.domain]
+must_have = ['apoderadosboric.cl', 'boricpresidente.cl', 'seguimos.cl']
+
+[boric.account_ids]
+# these were determined from the popularity lists after the first iteration (top-50)
+known_users = [
+    146542753,           # danieljadue
+    225445834,           # camila_vallejo
+    104020962,           # KarolCariola
+    59215690,            # GiorgioJackson
+    61524459,            # gonzalowinter
+    73981088,            # gabrielboric
+    225445834,           # camila_vallejo
+    59215690,            # GiorgioJackson
+    146542753,           # danieljadue
+    1384212992523313152, # ComandoBoric
+    52534878,            # izkia
+]
+
+[kast]
+title = 'José Antonio Kast'
+
+[kast.user_name]
+must_have = [
+    '#rechazo',
+    '#yorechazo',
+    '#yovotorechazo',
+    '#votorechazo',
+    '#rechazocrece',
+    '#votarechazo',
+    '#yorechazonuevaconstitucion',
+    '#rechazonuevaconstitucion',
+    '#rechazoganaenoctubre',
+    '#rechazonuevaconstitución',
+    '#kast2022',
+    '#kastpresidente',
+    '#kastpresidente2022',
+    '#atreveteporchile',
+    '#sumateporjak',
+    '#chilevotakast',
+    '#vota2votakast',
+    '#kast2022',
+    '#atreveteconkast',
+    '#vota2',
+    '#jak2022',
+    '#kast',
+    '#patriota',
+    '#republicano',
+    '#todovaaestarbien',
+]
+
+[kast.description_token]
+must_have = [
+    '#rechazo',
+    '#yorechazo',
+    '#yovotorechazo',
+    '#kast2022',
+    '#kastpresidente',
+    '#kastpresidente2022',
+    '#todochileconkast',
+    '#kastpresidente2022',
+    '#atreveteporchile',
+    '#sumateporjak',
+    '#chilevotakast',
+    '#vota2votakast',
+    '#kast2022',
+    '#atreveteconkast',
+    '#vota2',
+    '#jak2022',
+    '#kast',
+    '#patriota',
+]
+
+[kast.tweet_tokens]
+must_have = [
+    '#kast2022',
+    '#kastpresidente',
+    '#kastpresidente2022',
+    '#todochileconkast',
+    '#atrévete',
+    '#chilevotakast',
+    '#todochileconkast',
+    '#eslahoradekast',
+    '#votapazvotakast',
+    '#vota2votakast',
+]
+
+[kast.domain]
+must_have = ['apoderadosdemesa.cl']
+
+[kast.account_ids]
+known_users = [
+    123955962,           # joseantoniokast
+    738092057873555456,  # equipokast
+    212552510,           # carreragonzalo
+    154158378,           # RojoEdwards
+]
