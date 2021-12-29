@@ -63,7 +63,27 @@ The first path, `config`, states where the project lies. The second path, `data`
 
 ### Import data into your project
 
-There is one direct way of importing data. The following command imports a specific date from `TWEET_PATH`:
+`tsundoku` has three folders within the project data folder: `raw`, `interim`, and `processed`.
+
+The `raw` folder contains a subfolder named `json`, and within `raw/json` there is one folder for each day. The format is `YYYY-MM-DD`. Actually, the name of each folder within `raw/json` could be anything, but by convention I have worked with dates, as it makes it easier to organize different experiments.
+
+Currently, there are two ways of importing data. First, by specifying a chunk of tweet files to be imported into one folder within `raw/json` (A); or second, by importing files when the filename encodes datetime structure (B). Both are described next.
+
+If none of these two options works for you, you will have to craft your own importer. Fortunately, the module `tsundoku.data.importer` contains the `TweetImporter` class that will help you do so. 
+
+#### A. Import a set of files into a specific target
+
+The following command imports a set of files into a specific target folder:
+
+```sh
+$ python -m tsundoku.data.import_files /mnt/storage/tweets/*.gz --target 2021-12-12
+```
+
+This command takes all files pointed by the wildcard (you can also point specific files) and then it filters the tweets relevant for the project, saving them in a folder named `2021-12-12` in the project. The files do not need to be inside `TWEET_PATH`. However, they do need to be flattened according to the `tsundoku.data.filter_and_flatten` script. 
+
+#### B. Import by date when files have a specific naming structure
+
+The following command imports a specific date from `TWEET_PATH`:
 
 ```sh
 $ python -m tsundoku.data.import_date 20211219
@@ -79,12 +99,6 @@ Where:
 * `2021` (year) `12` (month) `27` (day) `1620` (time of the day).
 
 The code I use to crawl tweets generates these files every 10 minutes. It is available in [this repository](https://github.com/zorzalerrante/aguaite).
-
-When you run this command, `tsundoku` creates three folders within the project data folder: `raw`, `interim`, and `processed`.
-
-The `raw` folder contains a subfolder named `json`, and within `raw/json` there is one folder for each date imported. The format is `YYYY-MM-DD`. After running the command above, you will have the folder `raw/json/2021-12-19` plus other folders if there were retweets where the original tweet is from another date (this is common).
-
-If you do not have the files in the structure mentioned before, you will have to craft your own importer. Fortunately, the module `tsundoku.data.importer` contains the `TweetImporter` class that will help you do so. 
 
 ## Run your project
 
