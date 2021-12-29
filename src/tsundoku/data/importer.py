@@ -212,14 +212,16 @@ class TweetImporter(object):
     def data_path(self):
         return Path(self.config["path"].get("data"))
 
-    def import_date(self, date, pattern, source_path):
+    def import_date(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
         date_str = date
         date = pd.to_datetime(date)
 
         if type(source_path) == str:
             source_path = Path(source_path)
         elif not isinstance(source_path, Path):
-            raise ValueError(f"source_path is not a valid object (Path or str needed, got {type(source_path)})")
+            raise ValueError(
+                f"source_path is not a valid object (Path or str needed, got {type(source_path)})"
+            )
 
         if not source_path.exists():
             raise ValueError(f"source_path ({source_path}) is not a valid path")
@@ -234,7 +236,7 @@ class TweetImporter(object):
 
         task_files = []
 
-        for date in pd.date_range(data_date, periods=24 * 6, freq="10t"):
+        for date in pd.date_range(data_date, periods=periods, freq=freq):
             file_path = source_path / pattern.format(date.strftime("%Y%m%d%H%M"))
 
             if not file_path.exists():
@@ -246,15 +248,9 @@ class TweetImporter(object):
 
         json_path = self.data_path() / "raw" / "json" / date_str
 
-        if not json_path.exists():
-            json_path.mkdir(parents=True)
-            self.logger.info("{} directory created".format(json_path))
-        else:
-            self.logger.info("{} exists".format(json_path))
+        self.import_files(task_files, json_path, file_prefix='tweets.partition')
 
-        self.import_files(task_files, json_path)
-
-    def _read_file(self, i, filename, target_path):
+    def _read_file(self, i, filename, target_path, file_prefix=None):
         try:
             df = self.read_tweet_dataframe(filename)
         except zlib.error:
@@ -265,7 +261,10 @@ class TweetImporter(object):
             self.logger.error(f"(#{i}) empty file: {filename}")
             return 0
 
-        target_file = target_path / f"tweets.partition.{i}.json.gz"
+        if file_prefix is not None:
+            target_file = target_path / f"{file_prefix}.{i}.json.gz"
+        else:
+            target_file = target_path / f"{Path(filename).stem}.{i}.json.gz"
 
         df["tweet.tokens"] = df["text"].map(self.tokenize)
         df["user.description_tokens"] = df["user.description"].map(self.tokenize)
@@ -282,9 +281,15 @@ class TweetImporter(object):
         )
         return len(df)
 
-    def import_files(self, file_names, target_path):
+    def import_files(self, file_names, target_path, file_prefix=None):
+        if not target_path.exists():
+            target_path.mkdir(parents=True)
+            self.logger.info("{} directory created".format(target_path))
+        else:
+            self.logger.info("{} exists".format(target_path))
+
         tasks = [
-            dask.delayed(self._read_file)(i, f, target_path)
+            dask.delayed(self._read_file)(i, f, target_path, file_prefix=file_prefix)
             for i, f in enumerate(file_names)
         ]
         read_tweets = sum(dask.compute(*tasks))
