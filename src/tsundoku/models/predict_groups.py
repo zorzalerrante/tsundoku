@@ -131,7 +131,7 @@ def main(experiment, group):
             .set_index("user.id")
             .loc[user_ids.index]
         )
-        user_data["user.location"] = user_data["user.location"].map(deaccent)
+        user_data["user.location"] = user_data["user.location"].fillna("").map(deaccent)
 
         for group, meta in group_config.items():
             try:

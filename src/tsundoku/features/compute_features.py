@@ -27,7 +27,9 @@ def main(start_at):
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
-    config = read_toml(Path(os.environ['TSUNDOKU_PROJECT_PATH']) / "config.toml")["project"]
+    config = read_toml(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")[
+        "project"
+    ]
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config["environment"].get("n_jobs", 2))))
 
@@ -53,9 +55,7 @@ def main(start_at):
             target.mkdir(parents=True)
             logging.info(f"created: {tweet_path} -> {target}")
         else:
-            logging.info(
-                f"{target} already exists. skipping"
-            )
+            logging.info(f"{target} already exists. skipping")
             continue
 
         tweets = dd.read_json(
@@ -343,6 +343,17 @@ def compute_tweet_metrics(tweets, target_path):
             .sum()
         )
 
+        plain = (
+            all_tweets[
+                (all_tweets["rt.user.id"] == 0)
+                & (all_tweets["quote.user.id"] == 0)
+                & (all_tweets["in_reply_to_user_id"] == 0)
+            ]
+            .groupby("user.id")
+            .size()
+            .rename("data.plain_count")
+        )
+
         popularity = (
             all_tweets[all_tweets["rt.user.id"] > 0]
             .groupby("rt.user.id")
@@ -366,6 +377,7 @@ def compute_tweet_metrics(tweets, target_path):
 
         user_stats = (
             user_stats.join(popularity, how="left")
+            .join(plain, how="left")
             .join(quotability, how="left")
             .join(conversation, how="left")
             .fillna(0)

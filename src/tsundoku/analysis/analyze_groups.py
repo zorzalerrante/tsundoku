@@ -115,6 +115,24 @@ def main(experiment, group, overwrite):
         network_type="retweet",
     )
 
+    identify_network_lcc(
+        processed_path,
+        target_path,
+        user_ids,
+        "quote.user.id",
+        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+        network_type="quote",
+    )
+
+    identify_network_lcc(
+        processed_path,
+        target_path,
+        user_ids,
+        "in_reply_to_user_id",
+        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+        network_type="reply",
+    )
+
 
 def read_daily_stats(source_folder, user_ids):
     date = os.path.basename(source_folder)

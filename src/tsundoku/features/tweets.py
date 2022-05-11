@@ -83,7 +83,7 @@ def flatten_tweet(tweet):
         "user.statuses_count": user["statuses_count"],
         "user.created_at": user["created_at"],
         #'user.profile_image_url': user['profile_image_url'],
-        "user.profile_image_url_https": user["profile_image_url_https"],
+        "user.profile_image_url_https": user["profile_image_url_https"] if user["profile_image_url_https"] else "",
         "user.default_profile": user["default_profile"],
         "user.default_profile_image": user["default_profile_image"],
         # other
