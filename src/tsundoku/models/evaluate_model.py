@@ -16,11 +16,10 @@ import toml
 from dotenv import find_dotenv, load_dotenv
 from scipy.sparse import dok_matrix, save_npz
 
-from tsundoku.features.analysis import build_elem_to_id, filter_vocabulary
 from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.features.tweets import TWEET_DTYPES
 from tsundoku.features.urls import DISCARD_URLS, get_domain
-from tsundoku.helpers import read_json, write_json
+from tsundoku.helpers import read_json, read_toml, write_json
 from tsundoku.models.pipeline import evaluate, prepare_features
 
 
@@ -35,12 +34,14 @@ def main(experiment_name, group_key, n_splits):
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
-    config = read_json(Path(os.environ["TSUNDOKU_PROJECT-PATH"]) / "config.json")
+    config = read_toml(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")[
+        "project"
+    ]
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["data_path"]) / "raw" / "json"
-    experiment_file = Path(config["project_path"]) / "experiments" / "full.toml"
+    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
         raise FileNotFoundError(source_path)
@@ -79,12 +80,12 @@ def main(experiment_name, group_key, n_splits):
 
     # let's go
 
-    data_base = Path(config["data_path"]) / "interim"
+    data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["data_path"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
 
-    with open(Path(config["project_path"]) / "groups" / f"{group_key}.toml") as f:
+    with open(Path(config["path"]["config"]) / "groups" / f"{group_key}.toml") as f:
         group_config = toml.load(f)
 
     # these are sorted by tweet count!
@@ -97,7 +98,7 @@ def main(experiment_name, group_key, n_splits):
 
     # we discard noise to evaluate, including in stance classification!
     user_groups = pd.read_json(
-        processed_path / "stance.classification.predictions.json.gz", lines=True
+        processed_path / "relevance.classification.predictions.json.gz", lines=True
     ).set_index("user.id")
     valid_users = user_groups[user_groups["predicted_class"] != "noise"].index
     user_ids = user_ids.loc[valid_users].sort_values("row_id")
