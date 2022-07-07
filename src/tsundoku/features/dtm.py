@@ -2,11 +2,16 @@ from collections import Counter, defaultdict
 
 import numpy as np
 from scipy.sparse import dok_matrix
+import pandas as pd
+import dask.dataframe as dd
 
 
-def build_vocabulary(dd, token_column, to_lower=True):
+def build_vocabulary(vocab_df, token_column, to_lower=True, chunksize=10000):
+    if type(vocab_df) == pd.core.frame.DataFrame:
+        vocab_df = dd.from_pandas(vocab_df, chunksize=chunksize)
+
     return (
-        dd[[token_column]]
+        vocab_df[[token_column]]
         .explode(token_column)
         .assign(
             token=lambda x: x[token_column].str.lower() if to_lower else x[token_column]
@@ -22,8 +27,14 @@ def build_vocabulary(dd, token_column, to_lower=True):
 
 
 def tokens_to_document_term_matrix(
-    df, id_column, token_column, token_to_column, id_to_row=None, to_lower=True
-):
+    df, id_column, token_column, vocabulary, id_to_row=None):
+    if type(vocabulary) == pd.core.series.Series:
+        vocab_name = vocabulary.name
+        token_to_column = (
+            vocabulary.reset_index().set_index(vocab_name)["index"].to_dict()
+        )
+    else:
+        token_to_column = dict(vocabulary)
 
     token_counts = defaultdict(Counter)
 
@@ -35,9 +46,6 @@ def tokens_to_document_term_matrix(
             row_id = id_to_row[elem_id]
         else:
             continue
-
-        if to_lower:
-            elem_tokens = map(lambda x: x.lower(), elem_tokens)
 
         elem_tokens = filter(lambda x: x in token_to_column, elem_tokens)
 
