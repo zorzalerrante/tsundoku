@@ -29,6 +29,7 @@ dependencies:
   - pytorch
   - graph-tool
   - jupyter
+  - gdal
   - geopandas
   - libpysal
   - mapclassify

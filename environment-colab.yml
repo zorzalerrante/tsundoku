@@ -25,10 +25,11 @@ dependencies:
   - xgboost
   - pillow
   - wordcloud
-  - numba >= 0.4
+  - numba
   - pytorch
   - graph-tool
   - jupyter
+  - gdal
   - geopandas
   - libpysal
   - mapclassify
