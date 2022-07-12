@@ -9,14 +9,40 @@ About the name: tsundoku is a Japanese word (積ん読) that means "to pile book
 ## Development Setup
 
 ```sh
+# Clone repository
+git clone http://github.com/zorzalerrante/tsundoku
+
+# Move into folder
+cd tsundoku
+
 # Create conda environment, install dependencies on it and activate it
-conda create --name tsundoku --file environment.yml
+conda env create --name tsundoku_test --file environment-base.yml
+
+# Activate the environment 
 conda activate tsundoku
 
+# optionally you can update geographical analysis dependencies
+conda env update --file environment-geo.yml
+
+# make the tsundoku module available in your environment
+pip install -e .
+
+# install Kernel for use within Jupyter
 python -m ipykernel install --user --name tsundoku --display-name "Python (tsundoku)"
+
+# you can install PyTorch if you want to use deep learning models. this is the GPU version
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+
+# this is the CPU version
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+
+# then install 🤗 Transformers to access language models
+pip install transformers
 ```
 
 ## Data preliminaries
+
+This is needed if you want to use the full analysis pipeline as detailed in our papers. 
 
 ### Global configuration and preprocessing
 

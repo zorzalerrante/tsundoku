@@ -13,6 +13,7 @@ dependencies:
   - cytoolz
   - python-rapidjson
   - gensim
+  - scikit-learn
   - matplotlib=3.4.3
   - seaborn
   - umap-learn
@@ -24,15 +25,9 @@ dependencies:
   - wordcloud
   - graph-tool
   - jupyter
-  - gdal
-  - geopandas
-  - libpysal
-  - mapclassify
   - statsmodels
   - networkx
   - spectra
-  - descartes
-  - scikit-learn
   - pip:
     - lru-dict
     - pytz
@@ -48,9 +43,8 @@ dependencies:
     - pymunk
     - emoji
     - bezier
-    - KDEpy
-    - contextily
-    - matplotlib-scalebar
+    - scattertext
+    - adjustText
     - xlrd
     - python-dotenv
     - tweepy

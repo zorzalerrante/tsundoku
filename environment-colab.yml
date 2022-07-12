@@ -1,10 +1,10 @@
+name: tsundoku
 channels:
   - conda-forge
   - defaults
 dependencies:
   - python=3.7
   - configparser
-  - graphviz
   - ipykernel
   - pip
   - pandas
@@ -14,8 +14,6 @@ dependencies:
   - cytoolz
   - python-rapidjson
   - gensim
-  - scikit-learn
-  - spacy
   - matplotlib=3.4.3
   - seaborn
   - umap-learn
@@ -25,10 +23,7 @@ dependencies:
   - xgboost
   - pillow
   - wordcloud
-  - numba
-  - pytorch
   - graph-tool
-  - jupyter
   - gdal
   - geopandas
   - libpysal
@@ -38,7 +33,6 @@ dependencies:
   - spectra
   - descartes
   - scikit-learn
-  - jq
   - pip:
     - lru-dict
     - pytz
@@ -49,24 +43,17 @@ dependencies:
     - adjustText
     - toml
     - KDEpy
-    - spectra
     - pyahocorasick
     - powerlaw
     - shifterator
     - git+https://github.com/zorzalerrante/scikit-fusion
     - git+https://github.com/zorzalerrante/aves
-    - git+https://github.com/zorzalerrante/tsundoku
     - pymunk
-    - emoji
     - bezier
-    - scattertext
-    - KDEpy
-    - adjustText
     - contextily
     - matplotlib-scalebar
     - xlrd
     - python-dotenv
     - tweepy
-    - transformers
     - requests
     - aiohttp

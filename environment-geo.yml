@@ -1,0 +1,14 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - gdal
+  - geopandas
+  - libpysal
+  - mapclassify
+  - descartes
+  - pip
+  - pip:
+    - KDEpy
+    - matplotlib-scalebar
+    - contextily
