@@ -2,11 +2,11 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import scattertext
-from aves.features.twokenize import tokenize as twokenize
 from cytoolz import sliding_window
 from emoji.unicode_codes import EMOJI_UNICODE
 from gensim.utils import deaccent as gensim_deaccent
-
+from nltk.tokenize.casual import casual_tokenize
+from aves.features.twokenize import tokenize as ark_twokenize
 from tsundoku.features.re import PUNCTUATION_RE, URL_RE
 
 
@@ -40,14 +40,18 @@ def tokenize(
     lower=True,
     ngram_range=None,
     stopwords=None,
+    use_nltk=False
 ):
-    if lower:
-        text = text.lower()
-
     if deaccent:
         text = gensim_deaccent(text)
 
-    tokens = list(twokenize(text))
+    if lower:
+        text = text.lower()
+
+    if not use_nltk:
+        tokens = ark_twokenize(text)
+    else:
+        tokens = casual_tokenize(text)
 
     results = []
 
@@ -57,7 +61,7 @@ def tokenize(
     if remove_urls:
         tokens = filter(lambda x: URL_RE.match(x) is None, tokens)
 
-    tokens = list(tokens)
+    tokens = list(filter(lambda x: x, tokens))
 
     results.extend(tokens)
 
@@ -101,66 +105,3 @@ def tokenize(
         results = list(filter(lambda x: not x in stopwords, results))
 
     return results
-
-
-from collections import defaultdict
-from itertools import chain
-
-from cytoolz import frequencies, keyfilter, keymap, merge_with, valmap
-from lru import LRU
-
-
-def word_frequencies(text_iter, tokenize):
-    return frequencies(chain(*map(tokenize, text_iter)))
-
-
-def merge_frequencies(*freqs):
-    return merge_with(sum, *freqs)
-
-
-def get_tweet_terms(tweet, tokenize):
-    if "retweeted_status" in tweet:
-        rt = tweet["retweeted_status"]
-        text = tweet_text(rt)
-    else:
-        text = tweet_text(tweet)
-
-    terms = word_frequencies((text,), tokenize)
-
-    urls = tweet_urls(tweet)
-
-    if urls:
-        terms.update({url: 1 for url in urls})
-
-    return terms
-
-
-def cached_tokenizer(tokenize, cache_size=512):
-    seen = LRU(cache_size)
-
-    def get_terms(tweet):
-        tweet_id = tweet["id"]
-
-        if "retweeted_status" in tweet:
-            tweet_rt_id = tweet["retweeted_status"]["id"]
-            if tweet_rt_id in seen:
-                term_counts = seen[tweet_rt_id]
-            else:
-                term_counts = get_tweet_terms(tweet["retweeted_status"], tokenize)
-                seen[tweet_rt_id] = term_counts
-        else:
-            if tweet_id in seen:
-                term_counts = seen[tweet_id]
-            else:
-                term_counts = get_tweet_terms(tweet, tokenize)
-                seen[tweet_id] = term_counts
-
-        return term_counts
-
-    return get_terms
-
-
-def build_tokenizer(ngram_range=None, stopwords=None, cache_size=512):
-    tokenize_fn = tokenize_function()
-    tokenize = lambda x: tokenize_fn(x, ngram_range=ngram_range, stopwords=stopwords)
-    return cached_tokenizer(tokenize, cache_size=cache_size)

@@ -33,6 +33,7 @@ dependencies:
   - spectra
   - descartes
   - scikit-learn
+  - nltk
   - pip:
     - lru-dict
     - pytz
