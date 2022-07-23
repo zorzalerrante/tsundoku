@@ -20,7 +20,8 @@ from tsundoku.helpers import read_toml, write_json
 
 @click.command()
 @click.option("--start_at", type=str, default="")
-def main(start_at):
+@click.option("--overwrite", type=bool, default=False)
+def main(start_at, overwrite):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../interim).
     """
@@ -55,33 +56,42 @@ def main(start_at):
             target.mkdir(parents=True)
             logging.info(f"created: {tweet_path} -> {target}")
         else:
-            logging.info(f"{target} already exists. skipping")
+            logging.info(f"{target} already exists.")
+            if not overwrite:
+                logging.info(f"skipping.")
+                continue
+
+        target_files = glob(str(Path(tweet_path) / '*.gz'))
+        non_empty_files = list(filter(lambda x: os.stat(x).st_size > 10, target_files))
+        
+        if not non_empty_files:
+            logger.warning(f'{date} has no validfiles.')
             continue
 
-        tweets = dd.read_json(
-            Path(tweet_path) / "*.gz", meta=TWEET_DTYPES, dtype=TWEET_DTYPES
+        tweets = dd.read_json(non_empty_files, meta=TWEET_DTYPES, dtype=TWEET_DTYPES
         )
 
         if tweets.npartitions <= 0:
             logger.warning(f"{date} has no files")
             continue
 
-        logger.info(f"{date} -> computing user metrics")
-        compute_user_metrics(tweets, target)
-        logger.info(f"{date} -> computing tweet metrics")
-        compute_tweet_metrics(tweets, target)
+        logger.info(f"{date} ({tweets.npartitions} partitions) -> computing user metrics")
+        compute_user_metrics(tweets, target, overwrite)
+        logger.info(f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics")
+        compute_tweet_metrics(tweets, target, overwrite)
         logger.info(f"{date} -> done! :D")
 
 
-def compute_user_metrics(tweets, target_path):
+def compute_user_metrics(tweets, target_path, overwrite):
     users = None
 
-    if not (target_path / "unique_users.json.gz").exists():
+    if overwrite or not (target_path / "unique_users.json.gz").exists():
         users = (
             tweets.drop_duplicates(subset="user.id")
             .compute()
             .filter(regex="^user\.?.*")
         )
+
         users.to_json(
             target_path / "unique_users.json.gz",
             compression="gzip",
@@ -90,7 +100,7 @@ def compute_user_metrics(tweets, target_path):
             lines=True,
         )
 
-    if not (target_path / "user_name_vocabulary.json.gz").exists():
+    if overwrite or not (target_path / "user_name_vocabulary.json.gz").exists():
         if users is None:
             users = pd.read_json(target_path / "unique_users.json.gz", lines=True)
 
@@ -113,7 +123,7 @@ def compute_user_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "user_description_vocabulary.json.gz").exists():
+    if overwrite or not (target_path / "user_description_vocabulary.json.gz").exists():
         if users is None:
             users = pd.read_json(target_path / "unique_users.json.gz", lines=True)
 
@@ -137,9 +147,9 @@ def compute_user_metrics(tweets, target_path):
         )
 
 
-def compute_tweet_metrics(tweets, target_path):
+def compute_tweet_metrics(tweets, target_path, overwrite):
 
-    if not (target_path / "tweets_per_user.json.gz").exists():
+    if overwrite or not (target_path / "tweets_per_user.json.gz").exists():
         (
             tweets.drop_duplicates("id")
             .groupby("user.id")
@@ -156,7 +166,7 @@ def compute_tweet_metrics(tweets, target_path):
 
     tweet_vocabulary = None
 
-    if not (target_path / "tweet_vocabulary.json.gz").exists():
+    if overwrite or not (target_path / "tweet_vocabulary.json.gz").exists():
         tweet_vocabulary = (
             tweets.drop_duplicates("id")
             .explode("tweet.tokens")
@@ -176,7 +186,7 @@ def compute_tweet_metrics(tweets, target_path):
             lines=True,
         )
 
-    if not (target_path / "tweet_token_frequency.json.gz").exists():
+    if overwrite or not (target_path / "tweet_token_frequency.json.gz").exists():
         if tweet_vocabulary is None:
             tweet_vocabulary = pd.read_json(
                 target_path / "tweet_vocabulary.json.gz", lines=True
@@ -196,7 +206,7 @@ def compute_tweet_metrics(tweets, target_path):
 
         tweet_vocabulary = None
 
-    if not (target_path / "retweet_counts.json.gz").exists():
+    if overwrite or not (target_path / "retweet_counts.json.gz").exists():
         (
             tweets[tweets["rt.id"] > 0]
             .drop_duplicates("id")
@@ -214,7 +224,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "quote_counts.json.gz").exists():
+    if overwrite or not (target_path / "quote_counts.json.gz").exists():
         (
             tweets[tweets["quote.id"] > 0]
             .drop_duplicates("id")
@@ -232,7 +242,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "reply_counts.json.gz").exists():
+    if overwrite or not (target_path / "reply_counts.json.gz").exists():
         (
             tweets[tweets["in_reply_to_user_id"] > 0]
             .drop_duplicates("id")
@@ -250,7 +260,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "retweet_edgelist.json.gz").exists():
+    if overwrite or not (target_path / "retweet_edgelist.json.gz").exists():
         (
             tweets[tweets["rt.id"] > 0]
             .drop_duplicates("id")
@@ -268,7 +278,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "quote_edgelist.json.gz").exists():
+    if overwrite or not (target_path / "quote_edgelist.json.gz").exists():
         (
             tweets[tweets["quote.id"] > 0]
             .drop_duplicates("id")
@@ -286,7 +296,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "reply_edgelist.json.gz").exists():
+    if overwrite or not (target_path / "reply_edgelist.json.gz").exists():
         (
             tweets[tweets["in_reply_to_user_id"] > 0]
             .drop_duplicates("id")
@@ -304,7 +314,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "user_urls.json.gz").exists():
+    if overwrite or not (target_path / "user_urls.json.gz").exists():
         (
             tweets[tweets["entities.urls"].notnull()]
             .drop_duplicates("id")[["user.id", "entities.urls"]]
@@ -326,7 +336,7 @@ def compute_tweet_metrics(tweets, target_path):
             )
         )
 
-    if not (target_path / "daily_stats.json.gz").exists():
+    if overwrite or not (target_path / "daily_stats.json.gz").exists():
         all_tweets = (
             tweets[
                 ["id", "user.id", "rt.user.id", "quote.user.id", "in_reply_to_user_id"]
