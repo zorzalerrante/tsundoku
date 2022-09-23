@@ -339,7 +339,6 @@ def identify_network_lcc(
     edges["target"] = edges[target_column].map(id_to_node)
     network = Network.from_edgelist(edges, weight="frequency")
     graph = network.network
-    weight = network.edge_weight
 
     components, component_histogram = graph_tool.topology.label_components(
         graph, directed=False

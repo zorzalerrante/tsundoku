@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 import pandas as pd
 import scattertext
 from cytoolz import sliding_window
-from emoji.unicode_codes import EMOJI_UNICODE
+from emoji.unicode_codes import EMOJI_DATA
 from gensim.utils import deaccent as gensim_deaccent
 from nltk.tokenize.casual import casual_tokenize
 from aves.features.twokenize import tokenize as ark_twokenize
@@ -29,7 +29,7 @@ def score_frequency_table(gg_df, alpha_w=0.001, top_k=15):
     return pd.DataFrame(top_words)
 
 
-EMOJI_VALUES = set(EMOJI_UNICODE["es"].values())
+EMOJI_VALUES = set(EMOJI_DATA.keys())
 
 
 def tokenize(

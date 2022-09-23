@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import toml
 from dotenv import find_dotenv, load_dotenv
+import re
 
 from tsundoku.helpers import read_toml
 from tsundoku.models.pipeline import classifier_pipeline, save_classifier
@@ -100,8 +101,15 @@ def main(experiment, group):
         allow_list_ids = experiment_config[group_key]["allow_list"].get(
             "user_ids", None
         )
+        allow_id_class = experiment_config[group_key]["allow_list"].get(
+            "assigned_class", 'undisclosed'
+        )
+        logging.info(f'Whitelisted accounts: #{len(allow_list_ids)}. Using class {allow_id_class}')
     else:
         allow_list_ids = None
+        allow_id_class = None
+        logging.info(f'No whitelisted accounts')
+
 
     if group_key != "relevance" and relevance_path.exists():
         user_groups = pd.read_json(relevance_path, lines=True).set_index("user.id")
@@ -123,33 +131,93 @@ def main(experiment, group):
         0, index=user_ids.index, columns=group_config.keys(), dtype=int
     )
 
-    if group_key == "location":
-        import re
+    # if there are location patterns, tream them specially:
+    user_data = None
 
-        user_data = (
-            pd.read_json(processed_path / "user.unique.json.gz", lines=True)
-            .set_index("user.id")
-            .loc[user_ids.index]
-        )
-        user_data["user.location"] = user_data["user.location"].fillna("").map(deaccent)
+    load_user_data = lambda: (pd.read_json(processed_path / "user.unique.json.gz", lines=True)
+        .set_index("user.id")
+        .loc[user_ids.index]
+    )
 
-        for group, meta in group_config.items():
-            try:
-                group_re = re.compile(
-                    "|".join(meta["location"]["patterns"]), re.IGNORECASE
-                )
-            except KeyError:
-                print(f"no location patterns in {group}")
-                continue
+    for key, meta in group_config.items():
+        group_re = None
+        try:
+            print(f'location patterns for {key}, {meta["location"]["patterns"]}')
+            group_re = re.compile(
+                "|".join(meta["location"]["patterns"]), re.IGNORECASE
+            )
+        except KeyError:
+            print(f"no location patterns in {key}")
+            continue
 
-            group_ids = user_data[
-                user_data["user.location"].str.contains(group_re)
-            ].index
-            labels[group].loc[group_ids] = 1
+        if user_data is None:
+            user_data = load_user_data()
+            user_data["user.location"] = user_data["user.location"].fillna("").map(deaccent)
 
+        group_ids = user_data[
+            user_data["user.location"].str.contains(group_re)
+        ].index
+
+        if group == 'location':
+            # use these as account ids that cannot be modified (let's trust users)
+            if not 'account_ids' in meta:
+                meta['account_ids'] = dict()
+            
+            if not 'known_users' in meta:
+                meta['account_ids']['known_users'] = list(group_ids)
+            else:
+                meta['account_ids']['known_users'].extend(group_ids)
+        else:
+            # use them as labels
+            labels[key].loc[group_ids] = 1
+
+    # special case: age
+    if group == 'age':
+        if user_data is None:
+            user_data = load_user_data()
+
+        min_age = 10
+        max_age = 90
+
+        def pick_age(values):
+            if not values:
+                return 0
+            #print(values)
+            for x in values[0]:
+                if not x or int(x) < min_age:
+                    continue
+                return int(x)
+            return 0
+
+        age_patterns = re.compile('(?:^|level|lvl|nivel)\s?([0-6][0-9])\.|(?:^|\W)([0-9]{2})\s?(?:años|veranos|otoños|inviernos|primaveras|years old|vueltas|lunas|soles)', flags=re.IGNORECASE|re.UNICODE)
+        
+        found_age = user_data["user.description"].fillna("").str.findall(age_patterns).map(pick_age)
+        found_age = found_age[found_age.between(min_age, max_age)].copy()
+        print('found_age', found_age.shape)
+
+        print(found_age.sample(10))
+        print(found_age.value_counts())
+        
+        labeled_age = pd.cut(found_age, bins=[0, 17, 29, 39, 49, max_age + 1], labels=group_config.keys())
+
+        print(labeled_age.value_counts())
+
+        print(labeled_age.sample(10))
+
+        for key in group_config.keys():
+            print(key)
+            print((labeled_age == key).index)
+            labels[key].loc[labeled_age[labeled_age == key].index] = 1
+
+        skip_numeric_tokens = True
+    else:
+        skip_numeric_tokens = False
+
+    if user_data is not None:
         user_data = None
 
-        print(labels.sum())
+    print(labels.sample(10))
+    print(labels.sum())
 
     clf, predictions, feature_names_all, top_terms, X = classifier_pipeline(
         processed_path,
@@ -158,9 +226,11 @@ def main(experiment, group):
         labels,
         xgb_parameters,
         allowed_user_ids=allow_list_ids,
+        allowed_users_class=allow_id_class,
         early_stopping_rounds=pipeline_config["early_stopping_rounds"],
         eval_fraction=pipeline_config["eval_fraction"],
         threshold_offset_factor=pipeline_config["threshold_offset_factor"],
+        skip_numeric_tokens=skip_numeric_tokens
     )
     save_classifier(
         group_key, processed_path, X, clf, predictions, feature_names_all, top_terms
