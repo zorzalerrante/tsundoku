@@ -138,13 +138,12 @@ def main(experiment):
     )
 
     if "account_age_reference" in experimental_settings["anomalies"]:
-        acc_age = (
-            datetime.datetime(
+        user_features['__ref_age__'] = datetime.datetime(
                 *experimental_settings["anomalies"]["account_age_reference"]
             )
-            - user_features["user.created_at"]
-        )
+        acc_age = pd.to_datetime(user_features['__ref_age__']) - pd.to_datetime(user_features["user.created_at"])
         user_features["feature.account_age_days"] = acc_age.dt.days
+        del user_features['__ref_age__']
 
         user_features["feature.global_daily_rythm"] = np.log(
             user_features["user.statuses_count"] + 1
