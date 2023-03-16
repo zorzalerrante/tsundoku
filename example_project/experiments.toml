@@ -1,40 +1,40 @@
 [experiments]
 
-[experiments.primera_vuelta]
-key = 'primera-vuelta-noviembre'
+[experiments.antes]
+key = 'antes'
 folder_pattern = '*'
-folder_start = '2021-11-01'
-folder_end = '2021-11-23'
-discussion_only = 0
+folder_start = '2019-06-01'
+folder_end = '2019-08-31'
+discussion_only = 1
 discussion_directed = 0
 
-[experiments.primera_vuelta.topic_modeling]
+[experiments.antes.topic_modeling]
 n_topics = 200
 min_tweets = 10
 max_tweets_quantile = 0.98
 min_users = 1000
 max_users_quantile = 0.98
-n_jobs = 35
+n_jobs = 2
 passes = 2
 alpha = 'asymmetric'
 
-[experiments.segunda_vuelta]
-key = 'segunda-vuelta'
+[experiments.despues]
+key = 'despues'
 folder_pattern = '*'
-folder_start = '2021-11-24'
-folder_end = '2021-12-15'
-discussion_only = 0
+folder_start = '2020-06-01'
+folder_end = '2020-08-31'
+discussion_only = 1
 discussion_directed = 0
 
 
 [thresholds]
-name_tokens = 30
-description_tokens = 30
-tweet_tokens = 30
-tweet_domains = 30
-profile_domains = 10
-profile_tlds = 30
-edge_weight = 1
+name_tokens = 50
+description_tokens = 50
+tweet_tokens = 50
+tweet_domains = 50
+profile_domains = 30
+profile_tlds = 50
+edge_weight = 3
 
 [relevance]
 
@@ -45,7 +45,7 @@ subsample = 0.75
 colsample = 0.75
 n_estimators = 300
 max_delta_step = 1
-n_jobs = 38
+n_jobs = 2
 seed = 42
 objective = 'binary:logistic'
 
@@ -64,7 +64,7 @@ subsample = 1.0
 colsample = 1.0
 n_estimators = 400
 max_delta_step = 1
-n_jobs = 38
+n_jobs = 2
 seed = 42
 objective = 'binary:logistic'
 
@@ -73,23 +73,6 @@ early_stopping_rounds = 10
 eval_fraction = 0.1
 threshold_offset_factor = 0.05
 
-[1st_round]
-
-[1st_round.xgb]
-learning_rate = 0.125
-max_depth = 3
-subsample = 0.85
-colsample = 0.85
-n_estimators = 300
-max_delta_step = 1
-n_jobs = 37
-seed = 42
-objective = 'binary:logistic'
-
-[1st_round.pipeline]
-early_stopping_rounds = 10
-eval_fraction = 0.1
-threshold_offset_factor = 0.1
 
 [person]
 
@@ -100,7 +83,7 @@ subsample = 0.9
 colsample = 0.9
 n_estimators = 250
 max_delta_step = 1
-n_jobs = 35
+n_jobs = 2
 seed = 42
 objective = 'multi:softmax'
 
@@ -118,7 +101,7 @@ subsample = 1.0
 colsample = 1.0
 n_estimators = 300
 max_delta_step = 1
-n_jobs = 38
+n_jobs = 2
 seed = 42
 objective = 'multi:softmax'
 

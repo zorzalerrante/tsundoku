@@ -2,8 +2,8 @@
 name = "Example Project"
 
 [project.path]
-config = "/home/egraells/repositories/tsundoku/example_project"
-data = "/home/egraells/repositories/tsundoku/example_project/data"
+config = "/mnt/c/Users/nicol/Escritorio/Tsundoku/tsundoku/example_project"
+data = "/mnt/c/Users/nicol/Escritorio/Tsundoku/data"
     
 [project.content]
 term_files = ["keywords.txt"]

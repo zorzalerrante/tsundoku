@@ -223,6 +223,17 @@ must_have = [
     'chuncho',
 ]
 
+[male.account_ids]
+known_users = [
+    875648479, #PardoCass
+    126483685, #franciscoK_wish
+    1072592507400323073, #cristianlabrin5
+    1066427672, #CRLDEMONIO
+    385247322, #LaLeyEsRelativa
+    1054067419893907457, #Rinconainop
+    886791661916913665, #MarinHomerk	
+]
+
 [female]
 title = 'Mujeres'
 
@@ -331,6 +342,8 @@ must_have = [
     'helia',
     'florencia',
     'gabriela',
+    'gabi',
+    'giuli',
     'arelis',
     'mónica',
     'monica',
@@ -345,6 +358,7 @@ must_have = [
     'maricarmen',
     'evelyn',
     'clara',
+    'clarita',
     'mireya',
     'miranda',
     'melisa',
@@ -535,6 +549,15 @@ must_have = [
     'chuncha',
 ]
 
+[female.account_ids]
+known_users = [
+    63624735, #vivimatus
+    944744588, #joannagonzalezb
+    1064266987885469697, #Blitz_nadalini
+    976444953164382208, #lorenzalibertad
+    153934402, #Juanarivers
+]
+
 [institutional]
 title = 'Instituciones y Medios'
 
@@ -558,6 +581,7 @@ must_have = ['gob.cl']
 known_users = [
     # instituciones
     389514560,           # MinDep
+    16392202,            #Educacion2020
     2544154506,          # Sub_Interior
     973267023869378560,  # SubseBBNN
     145964997,           # previsionsocial
@@ -672,4 +696,5 @@ known_users = [
     890304367,          # dixit_io
     138914492,          # clublider
     395585075,          # DIARIOCHILE
+    147610028, #
 ]

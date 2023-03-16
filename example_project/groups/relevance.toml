@@ -2,74 +2,10 @@
 title = 'Relevant'
 
 [relevant.user_name]
-must_have = [
-    '#apruebo',
-    '#apruebocc',
-    '#yoapruebo',
-    '#sipoapruebo',
-    '#yoapruebocc',
-    '#apruebonuevaconstitucion',
-    '#yoapruebonuevaconstitucion',
-    '#yoapruebonuevaconstitución',
-    '#apruebonuevaconstitución',
-    '#convencionconstitucional',
-    '#convenciónconstitucional',
-    '#rechazo',
-    '#yorechazo',
-    '#yovotorechazo',
-    '#votorechazo',
-    '#rechazocrece',
-    '#votarechazo',
-    '#yorechazonuevaconstitucion',
-    '#rechazonuevaconstitucion',
-    '#rechazoganaenoctubre',
-    '#rechazonuevaconstitución',
-    '🇨🇱',
-    '#ahorayasna',
-    '#yovotoxyasna',
-    '#yasnapresidenta',
-    '#vota3',
-    '#conyasnaganamos',
-    '#sichelpresidente',
-    '#sepuede',
-    '#votasichel',
-    '#vota4',
-    '#consichelsepuede',
-    '#marcopresidente',
-    '#vota6',
-    '#yovoto6',
-    '#marco2022',
-    '#marcopresidente',
-    '#parisipresidente2022',
-    '#parisipresidente',
-    '#voyxparisi',
-    '#vota7',
-    '#yovoto7',
-    '#artés2022',
-    '#artes2022',
-    '#artéspresidente',
-    '#artespresidente',
-    '#eduardoartéspresidente',
-    '#vota5',
-    '#kastpresidente',
-    '#kast2022',
-]
+must_have = ['🇨🇱']
 
 [relevant.description_token]
-must_have = [
-    '#apruebo',
-    '#convencionconstitucional',
-    '#convenciónconstitucional',
-    '#yoapruebocc',
-    '#rechazo',
-    '#yorechazo',
-    '#yovotorechazo',
-    'chileno',
-    'chilena',
-    '🇨🇱',
-    'boric',
-    'kast',
-]
+must_have = ['chileno', 'chilena', '🇨🇱']
 
 [relevant.location]
 patterns = ['chile', '🇨🇱']
@@ -79,111 +15,59 @@ must_have = ['cl']
 
 [relevant.tweet_tokens]
 must_have = [
-    'jadue',
-    'boric',
-    'briones',
-    'lavín',
-    'sichel',
-    'desbordes',
-    'kast',
-    'provoste',
-    'parisi',
-    'artés',
-    'meo',
-    'm-eo',
-    '#kastpresidente2022',
-    '#atreveteporchile',
+    '#chile',
+    '#Chile',
+    '@sebastianpinera',
+    '@gobiernodechile',
     '@joseantoniokast',
-    '#sumateporjak',
-    '#chilevotakast',
-    '#vota2votakast',
-    '#kast2022',
-    '@provosteyasna',
-    '#ahorayasna',
-    '#yovotoxyasna',
-    '#yasnapresidenta',
-    '#vota3',
-    '@sebastiansichel',
-    '#sichelpresidente',
-    '#sepuede',
-    '#votasichel',
-    '#vota4',
-    '#consichelsepuede',
-    '@marcoporchile',
-    '#marcopresidente',
-    '#vota6',
-    '#yovoto6',
-    '#marco2022',
-    '@parisi_oficial',
-    '#parisipresidente2022',
-    '#parisipresidente',
-    '#voyxparisi',
-    '#vota7',
-    '#yovoto7',
-    '@artes_oficial',
-    '#artés2022',
-    '#artes2022',
-    '#artéspresidente',
-    '#eduardoartéspresidente',
-    '@gabrielboric',
-    '#boricpresidente',
-    '#boricpresidente2022',
-    '#meunoconboric',
-    '#seguimos',
-    'servel',
-    '#badboys',
-    '#boricpresidentedechile2022',
-    '#todochileconkast',
+    '@transantiago',
+    '#caravanamigrante',
+    '@dptoextranjeria',
+    'migración',
+    'migracion',
+    'migrante',
+    'migrantes',
+    'migrar',
+    'inmigración',
+    'inmigracion',
+    'inmigrante',
+    'inmigrantes',
+    'inmigró',
+    'inmigran',
+    'inmigraron',
+    '#xenofobia',
+    '#inmigración',
+    'interculturalidad',
+    'xenofobia',
+    'xenófobo',
+    'xenófobos',
+    'xenofobo',
+    'xenofobos',
+    'racismo',
+    'haití',
+    'Haití',
+    'haiti',
+    'Haití',
+    'lepra',
+    '#haitianos',
+    '#haiti',
+    'haitiano',
+    'haitianos',
+    'haitiana',
+    'haitianas',
+    'promigrante',
+    '🇨🇱',
 ]
 
 [relevant.account_ids]
 known_users = [
-    146087611,  # Emol
-    3222731,    # latercera
-    14638581,   # biobio
-    24952459,   # t13
-    7668952,    # cooperativa
-    90227660,   # 24HorasTVN
-    18248645,   # CNNChile
-    201493641,  # adnradiochile 	
-    613740623,  # eldesconcierto
-    197473435,  # el_dinamo
-    12815132,   # elmostrador
-    62937960,   # PDI_CHILE
-    2461798062, # CHVNoticiascl
-    3517444829, # PiensaPrensa
-    15224403,   # dmimica
-    159266218,  # NachoOrtega
-    129236515,  # mononerd
-    4119914644, # mbachelet
-    140119681,  # pablosimonetti
-    32754385,   # DMatamala
-    11061482,   # patricionavia
-    58946189,   # iallendebussi
-    42102939,   # GobiernodeChile
-    124266832,  # chilevision
-    36400985,   # DiarioLaHora
-    289629680,  # soychilecl
-    29222150,   # SoledadOnetto
-    58048133,   # ahoranoticiasAN
-    183315665,  # inddhh
-    54115409,   # PublimetroChile
-    14638581,   # biobio 
-    # candidates and related accounts
-    814966194914652160,  # paulanarvaezo
-    73981088,            # gabrielboric
-    45214422,            # desbordes
-    1618289516,          # ignaciobriones_
-    555147259,           # LavinJoaquin
-    1189533041510801408, # artes_oficial
-    1325658454875365376, # parisi_oficial
-    19003727,            # marcoporchile
-    24429981,            # sebastiansichel
-    2730306924,          # provosteyasna
-    73981088,            # gabrielboric
-    225445834,           # camila_vallejo
-    59215690,            # GiorgioJackson
-    146542753,           # danieljadue
+    3090538753, #oimchile
+    396796970, #sjm
+    13623532, #Piñera
+    114834301, #Mañalich
+    795381833684885504, #Min. Paris
+    1568927635, #Martorell
+    2496588486, #Paula Daza
 ]
 
 [noise]
@@ -265,7 +149,6 @@ must_have = [
     '🇭🇷',
     '🇪🇭',
     '🇦🇲',
-    # migration
     '#vox',
     '#freeyuyee',
     '#nottip',
@@ -301,17 +184,6 @@ must_have = [
     '#dezurdateam',
     'juniors',
     'juniors',
-    'cidade',
-    'serviço',
-    'brasil',
-    'perú',
-    'bolivia',
-    'river',
-    'plate',
-    'montevideo',
-    'uruguay',
-    'paraguay',
-    'panamá',
     'madridista',
     'españa',
     'madrid',
@@ -402,38 +274,8 @@ must_have = [
     'plate',
     'juniors',
     'juniors',
-    'cidade',
-    'serviço',
-    'brasil',
-    'perú',
-    'bolivia',
-    'river',
-    'plate',
-    'montevideo',
-    'uruguay',
-    'paraguay',
-    'panamá',
-    'madridista',
-    'españa',
-    'madrid',
-    '@racingmaniacos',
-    'gibraltar',
-    'psoe',
-    'pp',
-    'fanpage',
-    'buy',
-    'prsc',
-    'caracas',
-    '@ppsenado',
-    '@pp',
-    '@psoe',
-    'murcia',
-    'guatemala',
     '@listindiario',
     '@PRM_Oficial',
-    'psuv',
-    'roo',
-    '#caracas',
     '@vox_es',
     'atleti',
     '#maga',
@@ -446,11 +288,23 @@ must_have = [
     'bogotana',
     'ecuatoriano',
     'ecuatoriana',
-    'molt'
+    'molt',
+    'español',
+    'española',
+    'madrileño',
+    'madrileña',
+    'vasco',
+    'malagueño',
+    'malagueña',
 ]
 
 [noise.profile_domain]
 must_have = [
+    'about.me',
+    'inmigrantesenpanama.com',
+    'youtu.be',
+    'curiouscat.me',
+    'voxespana.es',
     'gob.ve',
     'com.ar',
     'com.es',
@@ -495,6 +349,7 @@ must_have = [
     'ni',
     'py',
     'pr',
+    'rd',
 ]
 
 [noise.location]
@@ -522,6 +377,8 @@ patterns = [
     'caracas',
     'republica dominicana',
     'república dominicana',
+    'rd',
+    'RD',
     'san salvador',
     'nariño',
     'south florida',
@@ -569,9 +426,14 @@ patterns = [
     'almería',
 ]
 
-
 [noise.domain]
 must_have = [
+    'cdn.com.do',
+    'sucesosdeveracruz.com.mx',
+    'conelmazodando.com.ve',
+    'mediterraneodigital.com',
+    'juntadeandalucia.es',
+    'eloriental.com.do',
     'cnn.it',
     'publico.es',
     'elrepublicaderoca.com',
@@ -674,7 +536,6 @@ must_have = [
     'petition.parliament.uk',
     'ilfattoquotidiano.it',
     'awsveanews.com',
-    # migration
     'elpais.com',
     'elmundo.es',
     'abc.es',
@@ -840,10 +701,49 @@ must_have = [
     'dozz.es',
     'eluniversal.com.mx',
     'telecinco.es',
+    'elfarodemelilla.es',
+    'eldebate.es',
+    'eljueves.es',
+    'minutoespana.com',
+    'espresso.repubblica.it',
+    'themexico.news',
 ]
 
 [noise.tweet_tokens]
 must_have = [
+    'españoles',
+    '@guardiacivil',
+    '#voxextremanecesidad',
+    '#voxavanza',
+    '@calcano15',
+    '@ciudadoriental',
+    '@laluzjose',
+    '@nieves_rd',
+    '@guerreromiguele',
+    '@lanacion_rd',
+    '@mdefensard',
+    'sirios',
+    '#españaesuna',
+    '@kamchatka_es',
+    '20€',
+    '@irantzuvarela',
+    '@sanchezcastejon',
+    '@drizzt__dourden',
+    '@imbrodamelilla',
+    '@denisedresserg',
+    '@pablo_iglesias_',
+    '@enriquekrauze',
+    '@ortega_smith',
+    '@ehbildu',
+    '@crisgarciat',
+    '@manueljabois',
+    '@hermanntertsch',
+    'andaluces',
+    'jaén',
+    'rumanos',
+    'aceituna',
+    '#tomadegranada',
+    '@viniciosenador',
     'franquistas',
     '#ue',
     '@ppkamigo',
@@ -870,8 +770,7 @@ must_have = [
     '@panampost',
     '@ucrnacional',
     '#díamundialavesmigratorias',
-    # migration stuff
-    '#xenofòbia',
+    '# migration stuff',
     '#catalunya',
     'catalunya',
     'guatemala',
@@ -885,8 +784,15 @@ must_have = [
     '#latamwantsbts',
     '@lenin',
     '@tuiteros_vzla',
-    '#venezuelarechazaxenofobia',
     '#pompeoencolombia',
+    '#jaén',
+    '#voxextremanecesidad',
+    '#españaviva',
+    '#porelbiendeméxico',
+    '@lopezobrador_',
+    '@m_ebrard',
+    'chiclana',
+    'alicante',
     '@salud_ec',
     '@patria_ve',
     '@jguaido',
@@ -901,7 +807,6 @@ must_have = [
     '#eeuu',
     '#voxextremanecesidad',
     '#españaviva',
-    '@lopezobrador_',
     '@realdonaldtrump',
     '@esracismosos',
     '@puebloexigerd',
@@ -1042,7 +947,6 @@ must_have = [
     '#copaoro2019',
     '#viena',
     '#austria',
-    '#chacalluta',
     '#noticiasrd',
     '#copaoro',
     '#paraguay',
@@ -1225,6 +1129,83 @@ must_have = [
     'steffen',
     '#ruta5sur',
     'nijimeirjer',
-    'chileangays'
+    'chileangays',
+    '#palmerassalvajes',
+    '#montevideo',
+    '@elespanolcom',
+    '15m€',
+    'mediterráneo',
+    'mediterraneo',
+    'sarriá',
+    'marroquíes',
+    'mena',
+    'menas',
 ]
 
+[noise.account_ids]
+known_users = [
+    188367715, #PoetaCaminate
+    257332880,#@hermanntertsch
+    82119937, #Lopez Obrador
+    2525837216, #senador RD
+    46485425, #Ex presidente de perú
+    35785401, #Uninoticias
+    77653794, #Iván ADuque
+    532512588, #@nieves_rd
+    94324983, #Periodista español
+    1021909229324697601, #@mariaxidols
+    793886601835315206, #@Sr_HSmith
+    124746336, #@CasoAislado_Es
+    105945224, #@Proctologo
+    2769135663, #@luis_sisepuede
+    17191272, #@eljueves
+    395184832, #@Agus_Martinez58
+    1725722755, #@kamchatka_es
+    2827278610, #AlbertoPugilato
+    395472436, #@NConcostrina
+    301308940, #@RubenSanchezTW
+    362565198, #@norcoreano
+    1470384674, #@MariaTabarnia
+    970102508, #@HuhConH
+    942229778, #@baghiramusic
+    110757702, #@MiguelxAlvarez
+    20909329, #@gerardotc
+    2550559028, #@Zeildoux
+    138922361, #@ernestomaciast
+    4902689895, #@azota_progres
+    549453509, #@culebra1978
+    1069740205928796161, #@Bravo199285
+    2891031959, #Yo_Soy_Asin
+    2982438653, #@Mcdalenor
+    15290060, #SebaVolte
+    815994028189696004, #@PerdigueroASP
+    318912141, #@Bribon1970
+    698104968105095170, #@eduardoinda
+    390097570, #@AntonioMonegro
+    4745166192, #@Apolo_900
+    3981006260, #Hisamacu
+    936249220083998720, #MariaJo55026514
+    553666300, #@OsarMejia
+    992337050627125249, #animalistatotal
+    279954447, #@gabrielmarch
+    2704215811, #pallaron12
+    901008152635879424, #PabloMussolini
+    365506670, #ociocenter
+    2371058076, #LuisColonRD
+    8314412, #@danterec
+    140764048, #arturote8
+    1693478581, #18dejulio36
+    402952054, #EvelinPlacidoAl	
+    1176674425, #puntamalabata
+    1259978400, #SINDO56027912
+    1049278631724425216, #Josema_vox_
+    225887277, #HoyporHoy
+    17248326, #@rubnpulido
+    1072483397161902081, #PablitoCABRAL10
+    1901949198,  #albur1948
+    2604948859, #danivalengr
+    3090326517, #AngelBlackmen
+    974739271654543367, #Roberto80994679
+    3090326517, #AngelBlackmen	
+    2755279044, #MultaniLuis
+]
