@@ -2,11 +2,11 @@
 import copy
 import logging
 import os
-import sys
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
+import matplotlib; matplotlib.use('agg');
 import click
 import dask
 import dask.dataframe as dd
@@ -19,11 +19,10 @@ from aves.models.network import Network
 from dotenv import find_dotenv, load_dotenv
 from scipy.sparse import dok_matrix, save_npz
 
-from tsundoku.features.helpers import build_elem_to_id, filter_vocabulary
+from tsundoku.features.helpers import filter_vocabulary
 from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
-from tsundoku.features.tweets import TWEET_DTYPES
-from tsundoku.features.urls import DISCARD_URLS, get_domain
-from tsundoku.helpers import read_toml, write_json
+from tsundoku.features.urls import get_domain
+from tsundoku.helpers import read_toml
 
 
 @click.command()
@@ -80,7 +79,12 @@ def main(experiment, overwrite):
         )
 
     key_folders = list(key_folders)
-    logging.info(f"{key_folders}")
+
+    if not key_folders:
+        logging.info('There are no folders with experiment data. Check folder_start and folder_end settings.')
+        return -1
+
+    logging.info(f"Key Folders: {key_folders}")
 
     # let's go
 
@@ -130,7 +134,7 @@ def main(experiment, overwrite):
     group_users(
         data_paths,
         processed_path,
-        discussion_only=bool(experimental_settings.get("discussion_only")),
+        discussion_only=bool(experimental_settings.get("discussion_only", False)),
         directed=bool(experimental_settings.get("discussion_directed", False)),
         overwrite=overwrite,
     )
@@ -269,7 +273,7 @@ def group_users(
     if discussion_only:
         logging.info(f"total #users before filtering by discussion: {len(users)}")
         nodes_in_largest = find_nodes_in_discussion(processed_path, directed=directed)
-        users = users[users["user.id"].isin(nodes_in_largest.index)]
+        users = users[users["user.id"].isin(nodes_in_largest)]
 
     logging.info(f"total #users: {len(users)}")
 
@@ -476,43 +480,16 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
 
     layers["weight"] = layers[["retweet", "reply", "quote"]].sum(axis=1)
 
-    unique_user_ids = set(layers["source.id"].unique()) | set(
-        layers["target.id"].unique()
-    )
-    id_to_node = dict(zip(unique_user_ids, range(len(unique_user_ids))))
-
-    layers["source.node"] = layers["source.id"].map(id_to_node)
-    layers["target.node"] = layers["target.id"].map(id_to_node)
-
     network = Network.from_edgelist(
         layers,
-        source="source.node",
-        target="target.node",
+        source="source.id",
+        target="target.id",
         weight="weight",
-        directed=False,
-    )
-    layer_graph = network.graph
+        directed=True,
+    ).largest_connected_component(directed=directed)
 
-    logging.info(
-        f"full network #vertices: {layer_graph.num_vertices()}, #edges: {layer_graph.num_edges()}"
-    )
-    layer_components, component_histogram = graph_tool.topology.label_components(
-        layer_graph, directed=False
-    )
-    component_histogram = pd.Series(
-        component_histogram, name="component_sizes"
-    ).to_frame()
-    component_histogram.to_csv(
-        processed_path / "discussion.component_histogram.csv.gz", compression="gzip"
-    )
+    nodes_in_largest = list(network.graph.vertex_properties["elem_id"])
 
-    node_components = pd.Series(
-        layer_components.a, name="component_id", index=unique_user_ids
-    ).to_frame()
-    node_components.index.name = "user.id"
-    largest_id = np.argmax(component_histogram)
-    nodes_in_largest = node_components[node_components["component_id"] == largest_id]
-    logging.info(f"#nodes in largest component: #{nodes_in_largest.shape[0]}")
     return nodes_in_largest
 
 

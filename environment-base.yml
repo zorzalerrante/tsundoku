@@ -28,6 +28,7 @@ dependencies:
   - statsmodels
   - networkx
   - spectra
+  - nltk
   - pip:
     - lru-dict
     - pytz
