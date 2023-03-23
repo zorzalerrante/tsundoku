@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 
+import logging
 import numpy as np
 from scipy.sparse import dok_matrix
 import pandas as pd
@@ -50,9 +51,8 @@ def tokens_to_document_term_matrix(
         elem_tokens = filter(lambda x: x in token_to_column, elem_tokens)
 
         token_counts[row_id].update(elem_tokens)
-
     dtm = dok_matrix(
-        (max(id_to_row.values()) + 1, max(token_to_column.values()) + 1), dtype=np.int
+        (max(id_to_row.values()) + 1, max(token_to_column.values()) + 1), dtype=int
     )
 
     for row_id, elem_token_counts in token_counts.items():

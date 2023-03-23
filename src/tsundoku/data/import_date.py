@@ -8,7 +8,7 @@ import pandas as pd
 from dotenv import find_dotenv, load_dotenv
 
 from tsundoku.data.importer import TweetImporter
-
+import gzip
 
 @click.command()
 @click.argument("date", type=str)
@@ -23,6 +23,8 @@ def main(date, days, encoding, pattern):
     logger.info(str(project.config))
 
     source_path = Path(os.environ["TWEET_PATH"])
+
+    logger.info("CURRENT TWEET_PATH: " + str(source_path) + str(source_path.exists()))
 
     for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
         current_date = str(current_date.date())

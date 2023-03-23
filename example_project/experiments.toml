@@ -1,14 +1,14 @@
 [experiments]
 
-[experiments.antes]
-key = 'antes'
+[experiments.test]
+key = 'test'
 folder_pattern = '*'
-folder_start = '2019-06-01'
-folder_end = '2019-08-31'
+folder_start = '2022-01-25'
+folder_end = '2022-01-28'
 discussion_only = 1
 discussion_directed = 0
 
-[experiments.antes.topic_modeling]
+[experiments.test.topic_modeling]
 n_topics = 200
 min_tweets = 10
 max_tweets_quantile = 0.98
@@ -17,14 +17,6 @@ max_users_quantile = 0.98
 n_jobs = 2
 passes = 2
 alpha = 'asymmetric'
-
-[experiments.despues]
-key = 'despues'
-folder_pattern = '*'
-folder_start = '2020-06-01'
-folder_end = '2020-08-31'
-discussion_only = 1
-discussion_directed = 0
 
 
 [thresholds]

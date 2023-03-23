@@ -109,9 +109,13 @@ def main(experiment, overwrite):
         ("quote", "quote.user.id"),
         ("retweet", "rt.user.id"),
     ):
-        interaction_dd = dd_from_paths(
-            [d / f"{int_name}_edgelist.json.gz" for d in data_paths]
-        )
+        try:
+            interaction_dd = dd_from_paths(
+                [d / f"{int_name}_edgelist.json.gz" for d in data_paths])
+        except:
+            df = pd.DataFrame(columns=["user.id", int_column,"frequency"])
+            interaction_dd = dd.from_pandas(df, npartitions = 0)
+        
         group_user_interactions(
             interaction_dd,
             key_column,
@@ -146,7 +150,6 @@ def main(experiment, overwrite):
         .set_index("user.id")["row_id"]
         .to_dict()
     )
-
     build_vocabulary_and_matrix(
         users_dd,
         processed_path,
@@ -349,8 +352,6 @@ def build_vocabulary_and_matrix(
                 relevant_vocabulary_target, lines=True
             ).set_index("token")
         token_to_id = relevant_vocabulary["token_id"].to_dict()
-        token_to_id = relevant_vocabulary["token_id"].to_dict()
-
         token_matrices = dask_df.map_partitions(
             lambda df: tokens_to_document_term_matrix(
                 df, key_column, token_column, token_to_id, id_to_row=elem_to_id
@@ -436,7 +437,7 @@ def build_user_tweets_term_matrix(
 
         dtm = dok_matrix(
             (max(elem_to_id.values()) + 1, max(tweet_token_to_id.values()) + 1),
-            dtype=np.int64,
+            dtype=int,
         )
 
         for row in user_tweet_frequency.itertuples():
@@ -456,16 +457,22 @@ def build_user_tweets_term_matrix(
 def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
     layers = pd.DataFrame(columns=["source.id", "target.id"])
 
-    for layer_name in ["retweet", "reply", "quote"]:
+    for layer_name, layer_column in (
+        ("retweet", "rt.user.id"),
+        ("quote", "quote.user.id"),
+        ("reply", "in_reply_to_user_id"),
+    ):
+    
         layer = pd.read_json(
             processed_path / f"user.{layer_name}_edges.all.json.gz", lines=True
         )
+        if (layer.empty): layer = pd.DataFrame(columns=["user.id", layer_column,"frequency"])
         layer.columns = ["source.id", "target.id", layer_name]
         layers = layers.merge(layer, how="outer").fillna(0)
         logging.info(f"full network layer {layer_name}: {layers.shape}")
 
     for layer_name in ["retweet", "reply", "quote"]:
-        layers[layer_name] = layers[layer_name].astype(np.int)
+        layers[layer_name] = layers[layer_name].astype(int)
 
     layers["weight"] = layers[["retweet", "reply", "quote"]].sum(axis=1)
 
@@ -484,7 +491,7 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
         weight="weight",
         directed=False,
     )
-    layer_graph, layer_weight = network.graph, network.edge_weight
+    layer_graph = network.graph
 
     logging.info(
         f"full network #vertices: {layer_graph.num_vertices()}, #edges: {layer_graph.num_edges()}"
@@ -557,7 +564,7 @@ def build_network(
 
     # users that are not in the network: an empty row. we need it, but we don't need empty columns
     sparse_adjacency_matrix = dok_matrix(
-        (len(elem_to_id), len(id_to_node)), dtype=np.int
+        (len(elem_to_id), len(id_to_node)), dtype=int
     )
 
     for row in edges.itertuples():
@@ -640,7 +647,7 @@ def group_user_urls(
     url_to_id = url_frequency_relevant["token_id"].to_dict()
 
     dtm = dok_matrix(
-        (max(elem_to_id.values()) + 1, max(url_to_id.values()) + 1), dtype=np.int
+        (max(elem_to_id.values()) + 1, max(url_to_id.values()) + 1), dtype=int
     )
 
     for row in urls_relevant.itertuples():
@@ -682,7 +689,7 @@ def group_profile_domains(
         .dropna()
         .pipe(lambda x: x[x["user.url"].str.len() > 0].copy())
     )
-
+    
     profile_urls["user.profile_domain"] = profile_urls["user.url"].map(get_domain)
     profile_urls["user.main_domain"] = (
         profile_urls["user.profile_domain"].str.split(".").str.slice(-2).str.join(".")
@@ -694,12 +701,19 @@ def group_profile_domains(
     profile_domains = (
         profile_urls.groupby("user.main_domain").size().rename("frequency")
     )
+
+    
+    logging.info(f"profile_domains 5: {str(profile_domains)}")
+    min_freq = 2
     profile_domains = (
         profile_domains[profile_domains >= min_freq]
         .sort_values(ascending=False)
         .to_frame()
         .assign(token_id=lambda x: range(len(x)))
     )
+    
+    logging.info(f"profile_domains 6: {str(profile_domains)}")
+
 
     profile_domains.reset_index().to_json(
         profile_domains_target, compression="gzip", orient="records", lines=True
@@ -708,8 +722,10 @@ def group_profile_domains(
 
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
 
+
+    logging.info(f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
     user_main_domain_matrix = dok_matrix(
-        (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=np.int
+        (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
     )
 
     for row in profile_urls.set_index(["user.id", "user.main_domain"]).itertuples():
@@ -743,7 +759,7 @@ def group_profile_domains(
     tld_to_id = dict(zip(profile_tlds.index, range(len(profile_tlds))))
 
     user_tld_matrix = dok_matrix(
-        (max(elem_to_id.values()) + 1, max(tld_to_id.values()) + 1), dtype=np.int64
+        (max(elem_to_id.values()) + 1, max(tld_to_id.values()) + 1), dtype=int
     )
 
     for row in profile_urls.set_index(["user.id", "user.tld"]).itertuples():

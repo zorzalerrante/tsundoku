@@ -90,7 +90,7 @@ def main(experiment):
 
     user_data["feature.default_profile_image"] = user_data[
         "user.default_profile_image"
-    ].astype(np.int8)
+    ].astype(int)
 
     user_features = user_data.join(user_transformed_volume, on="user.id")
 
