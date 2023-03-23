@@ -205,7 +205,7 @@ def prepare_features(
 
     # remove contradicting labels
     # keep only labels with one class only
-    class_label_counts = labels[labels.values > 0].astype(np.bool).sum(axis=1)
+    class_label_counts = labels[labels.values > 0].astype(bool).sum(axis=1)
     labels.loc[class_label_counts[class_label_counts > 1].index] = 0
 
     print(labels.sum(axis=0))
