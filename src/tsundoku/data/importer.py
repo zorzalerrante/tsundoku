@@ -253,6 +253,20 @@ class TweetImporter(object):
         json_path = self.data_path() / "raw" / "json" / date_str
 
         self.import_files(task_files, json_path, file_prefix='tweets.partition')
+        
+    def import_files(self, file_names, target_path, file_prefix=None):
+        if not target_path.exists():
+            target_path.mkdir(parents=True)
+            self.logger.info("{} directory created".format(target_path))
+        else:
+            self.logger.info("{} exists".format(target_path))
+
+        tasks = [
+            dask.delayed(self._read_file)(i, f, target_path, file_prefix=file_prefix)
+            for i, f in enumerate(file_names)
+        ]
+        read_tweets = sum(dask.compute(*tasks))
+        self.logger.info(f"done! imported {read_tweets} tweets")
 
     def _read_file(self, i, filename, target_path, file_prefix=None):
         try:
@@ -314,7 +328,21 @@ class TweetImporter(object):
 
             parquet_path = self.data_path() / "raw" / "parquet" / date_str
 
-            self.import_files(task_files, parquet_path, file_prefix='tweets.partition')
+            self.import_files_to_arrow(task_files, parquet_path, file_prefix='tweets.partition')
+
+    def import_files_to_arrow(self, file_names, target_path, file_prefix=None):
+        if not target_path.exists():
+            target_path.mkdir(parents=True)
+            self.logger.info("{} directory created".format(target_path))
+        else:
+            self.logger.info("{} exists".format(target_path))
+
+        tasks = [
+            dask.delayed(self._read_file_to_arrow)(i, f, target_path, file_prefix=file_prefix)
+            for i, f in enumerate(file_names)
+        ]
+        read_tweets = sum(dask.compute(*tasks))
+        self.logger.info(f"done! imported {read_tweets} tweets")
 
     def _read_file_to_arrow(self, i, filename, target_path, file_prefix=None):
         try:
@@ -333,17 +361,3 @@ class TweetImporter(object):
         pq.write_table(adf, target_file, use_dictionary=False)
 
         return adf.num_rows
-
-    def import_files(self, file_names, target_path, file_prefix=None):
-        if not target_path.exists():
-            target_path.mkdir(parents=True)
-            self.logger.info("{} directory created".format(target_path))
-        else:
-            self.logger.info("{} exists".format(target_path))
-
-        tasks = [
-            dask.delayed(self._read_file)(i, f, target_path, file_prefix=file_prefix)
-            for i, f in enumerate(file_names)
-        ]
-        read_tweets = sum(dask.compute(*tasks))
-        self.logger.info(f"done! imported {read_tweets} tweets")
