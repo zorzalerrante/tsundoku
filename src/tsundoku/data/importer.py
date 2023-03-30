@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 import pytz
 import toml
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from pyarrow import json as pa_json
 from cytoolz import pluck
 from lru import LRU
 
@@ -272,14 +276,63 @@ class TweetImporter(object):
 
         self.logger.info(f"(#{i}) read {len(df)} tweets from {filename}")
 
-        df.to_json(
-            target_file,
-            orient="records",
-            force_ascii=False,
-            lines=True,
-            compression="gzip",
-        )
-        return len(df)
+        df.to_json(target_file, compression="gzip")
+
+    def import_date_arrow(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
+            date_str = date
+            date = pd.to_datetime(date)
+
+            if type(source_path) == str:
+                source_path = Path(source_path)
+            elif not isinstance(source_path, Path):
+                raise ValueError(
+                    f"source_path is not a valid object (Path or str needed, got {type(source_path)})"
+                )
+
+            if not source_path.exists():
+                raise ValueError(f"source_path ({source_path}) is not a valid path")
+
+            self.logger.info(f"Source folder: {source_path}")
+
+            if not source_path.exists():
+                raise IOError(f"{source_path} does not exist")
+
+            data_date = self.timezone.localize(date).astimezone(pytz.utc)
+            self.logger.info(f"UTC start date: {data_date}")
+
+            task_files = []
+
+            for date in pd.date_range(data_date, periods=periods, freq=freq):
+                file_path = source_path / pattern.format(date.strftime("%Y%m%d%H%M"))
+
+                if not file_path.exists():
+                    self.logger.info(f"{file_path} does not exist")
+                else:
+                    task_files.append(file_path)
+
+            self.logger.info(f"#files to import: {len(task_files)}")
+
+            parquet_path = self.data_path() / "raw" / "parquet" / date_str
+
+            self.import_files(task_files, parquet_path, file_prefix='tweets.partition')
+
+    def _read_file_to_arrow(self, i, filename, target_path, file_prefix=None):
+        try:
+            adf = pa_json.read_json(filename)
+        except zlib.error:
+            self.logger.error(f"(#{i}) corrupted file: {filename}")
+            return 0
+        
+        if file_prefix is not None:
+            target_file = target_path / f"{file_prefix}.{i}.parquet"
+        else:
+            target_file = target_path / f"{Path(filename).stem}.{i}.parquet"
+
+        self.logger.info(f"(#{i}) read {adf.num_rows} tweets from {filename}")
+
+        pq.write_table(adf, target_file, use_dictionary=False)
+
+        return adf.num_rows
 
     def import_files(self, file_names, target_path, file_prefix=None):
         if not target_path.exists():
