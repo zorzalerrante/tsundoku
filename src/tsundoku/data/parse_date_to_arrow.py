@@ -10,6 +10,7 @@ from dotenv import find_dotenv, load_dotenv
 from tsundoku.data.importer import TweetImporter
 import gzip
 
+
 @click.command()
 @click.argument("date", type=str)
 @click.option("--days", default=1, type=int)
@@ -17,18 +18,19 @@ import gzip
 @click.option("--pattern", default="auroracl_{}.data.gz", type=str)
 def main(date, days, encoding, pattern):
     logger = logging.getLogger(__name__)
-    logger.info("making final data set from raw data")
+    logger.info("Transforming from .json to .parquet for arrow library usage")
 
     project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
     logger.info(str(project.config))
 
     source_path = Path(os.environ["TWEET_PATH"])
 
-    logger.info("CURRENT TWEET_PATH: " + str(source_path) + str(source_path.exists()))
+    logger.info("CURRENT TWEET_PATH: " + str(source_path))
 
     for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
         current_date = str(current_date.date())
-        project.import_date_arrow(current_date, pattern=pattern, source_path=source_path)
+        project.parse_date_to_arrow(
+            current_date, pattern=pattern, source_path=source_path)
 
 
 if __name__ == "__main__":
