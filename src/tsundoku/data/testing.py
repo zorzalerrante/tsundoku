@@ -12,21 +12,26 @@ from dotenv import find_dotenv, load_dotenv
 from tsundoku.data.importer import TweetImporter
 import gzip
 
+import ctypes
+from tsundoku.features.timer import Timer
+
 
 @click.command()
 def main():
     logger = logging.getLogger(__name__)
-    logger.info("making final data set from raw data")
+    logger.info("Testing")
 
-    project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
-    logger.info(str(project.config))
+    t = Timer()
+    t.start()
+    list = [1, 2, 3]
+    list2 = [1, 2, 3]
 
-    target_path = project.data_path() / "raw" / "parquet" / "2022-01-02" / \
-        "tweets.partition.0.parquet"
+    logger.info("Testing: " + str(list))
+    logger.info("Testing: " + str(list2))
 
-    ddd = dd.read_parquet(target_path)
-    print(ddd.head())
-    return ddd
+    time = t.stop()
+
+    logger.info("time: " + str(time))
 
 
 if __name__ == "__main__":
