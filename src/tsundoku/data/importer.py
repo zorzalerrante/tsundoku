@@ -18,12 +18,12 @@ import pyarrow.parquet as pq
 import dask.dataframe as dd
 
 from pyarrow import json as pa_json
-from cytoolz import pluck
-from lru import LRU
-
-from tsundoku.features.re import build_re_from_files
-from tsundoku.features.text import tokenize
+from datetime import datetime
 from tsundoku.helpers import read_list
+from tsundoku.features.text import tokenize
+from tsundoku.features.re import build_re_from_files
+from lru import LRU
+from cytoolz import pluck
 
 
 class TweetImporter(object):
@@ -62,7 +62,7 @@ class TweetImporter(object):
             )
 
         candidates = df[flag]
-        self.logger.info(f"Location filtering: {len(candidates)} from {len(df)} tweets")
+        # self.logger.info(f"Location filtering: {len(candidates)} from {len(df)} tweets")
 
         if len(self.automaton):
             result = []
@@ -81,7 +81,7 @@ class TweetImporter(object):
 
             candidates = candidates[result]
 
-        self.logger.info(f"Keyword filtering: {len(candidates)} from {len(df)} tweets")
+        # self.logger.info(f"Keyword filtering: {len(candidates)} from {len(df)} tweets")
 
         return candidates
 
@@ -93,8 +93,8 @@ class TweetImporter(object):
 
         return df
 
-    def read_tweet_arrow_dataframe(self, filename, encoding="utf-8"):
-        adf = pd.read_parquet(filename, engine='pyarrow')
+    def read_tweet_arrow_dataframe(self, filename):
+        adf = pd.read_parquet(filename, engine='pyarrow', use_nullable_dtypes=True)
 
         if len(adf.columns) != 0:
             return self.filter_dataframe(adf)
@@ -299,7 +299,11 @@ class TweetImporter(object):
 
         self.logger.info(f"(#{i}) read {len(df)} tweets from {filename}")
 
-        df.to_json(target_file, compression="gzip")
+        df.to_json(target_file,
+                   orient="records",
+                   force_ascii=False,
+                   lines=True,
+                   compression="gzip")
         return len(df)
 
     def parse_date_to_arrow(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
@@ -334,7 +338,7 @@ class TweetImporter(object):
             else:
                 task_files.append(file_path)
 
-        # self.logger.info(f"#files to import: {len(task_files)}")
+        self.logger.info(f"#files to import: {len(task_files)}")
 
         parquet_path = source_path / "parquet"
 
@@ -353,7 +357,7 @@ class TweetImporter(object):
             for i, f in enumerate(file_names)
         ]
         read_tweets = sum(dask.compute(*tasks))
-        self.logger.info(f"done! imported {read_tweets} tweets")
+        self.logger.info(f"done! imported {read_tweets} tweets from {len(file_names)}")
 
     def _parse_files_to_arrow(self, i, filename, target_path):
         try:
@@ -364,9 +368,9 @@ class TweetImporter(object):
 
         target_file = target_path / f"{Path(filename).stem}.parquet"
 
-        # self.logger.info(
-        #     f"(#{i}) imported {adf.num_rows} tweets from {filename}")
         pq.write_table(adf, target_file, use_dictionary=False)
+
+        # self.logger.info(f"(#{i}) imported")
         return adf.num_rows
 
     def import_date_from_arrow(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
@@ -404,21 +408,21 @@ class TweetImporter(object):
 
         # self.logger.info(f"#files to import: {len(task_files)}")
 
-        json_path = self.data_path() / "raw" / "parquet" / date_str
+        parquet_path = self.data_path() / "raw" / "parquet" / date_str
 
-        self.import_files_from_arrow(task_files, json_path)
+        self.import_files_from_arrow(
+            task_files, parquet_path, file_prefix='tweets.partition')
 
-    def import_files_from_arrow(self, file_names, target_path):
+    def import_files_from_arrow(self, file_names, target_path, file_prefix=None):
         if not target_path.exists():
             target_path.mkdir(parents=True)
             # self.logger.info("{} directory created".format(target_path))
-        else:
-            pass
+        # else:
             # self.logger.info("{} exists".format(target_path))
 
         tasks = [
             dask.delayed(self._read_arrow_file)(
-                i, f, target_path)
+                i, f, target_path, file_prefix=file_prefix)
             for i, f in enumerate(file_names)
         ]
         read_tweets = sum(dask.compute(*tasks))
@@ -443,8 +447,16 @@ class TweetImporter(object):
         adf["tweet.tokens"] = adf["text"].map(self.tokenize)
         adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
         adf["user.name_tokens"] = adf["user.name"].map(self.tokenize)
+        adf["user.created_at"] = adf["user.created_at"].map(
+            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y"))
+        adf["created_at"] = adf["created_at"].map(
+            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y"))
 
         # self.logger.info(f"(#{i}) read {len(adf)} tweets from {filename}")
-        adf.to_json(target_file, compression="gzip")
+        adf.to_json(target_file,
+                    orient="records",
+                    force_ascii=False,
+                    lines=True,
+                    compression="gzip")
 
         return len(adf)

@@ -4,7 +4,7 @@
 key = 'test'
 folder_pattern = '*'
 folder_start = '2022-01-25'
-folder_end = '2022-01-28'
+folder_end = '2022-01-31'
 discussion_only = 1
 discussion_directed = 0
 
