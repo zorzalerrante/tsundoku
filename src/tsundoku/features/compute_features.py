@@ -21,12 +21,16 @@ from tsundoku.helpers import read_toml, write_json
 @click.command()
 @click.option("--start_at", type=str, default="")
 @click.option("--overwrite", type=bool, default=False)
-def main(start_at, overwrite):
+@click.option("--filetype", type=str, default="json")
+def main(start_at, overwrite, filetype):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../interim).
     """
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
+
+    if filetype not in ["json", "parquet"]:
+        raise KeyError(filetype)
 
     config = read_toml(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")[
         "project"
@@ -34,7 +38,7 @@ def main(start_at, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config["environment"].get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / filetype
 
     if not source_path.exists():
         raise FileNotFoundError(source_path)
@@ -50,7 +54,7 @@ def main(start_at, overwrite):
         if start_at and date < start_at:
             continue
 
-        target = Path(config["path"]["data"]) / "interim" / f"{date}"
+        target = Path(config["path"]["data"]) / "interim" / filetype / f"{date}"
 
         if not target.exists():
             target.mkdir(parents=True)
@@ -63,28 +67,29 @@ def main(start_at, overwrite):
 
         target_files = glob(str(Path(tweet_path) / '*.gz'))
         non_empty_files = list(filter(lambda x: os.stat(x).st_size > 10, target_files))
-        
+
         if not non_empty_files:
             logger.warning(f'{date} has no validfiles.')
             continue
 
-        tweets = dd.read_json(non_empty_files, meta=TWEET_DTYPES, dtype=TWEET_DTYPES
-        )
+        tweets = dd.read_json(non_empty_files, meta=TWEET_DTYPES, dtype=TWEET_DTYPES)
 
         if tweets.npartitions <= 0:
             logger.warning(f"{date} has no files")
             continue
 
-        logger.info(f"{date} ({tweets.npartitions} partitions) -> computing user metrics")
+        logger.info(
+            f"{date} ({tweets.npartitions} partitions) -> computing user metrics")
         compute_user_metrics(tweets, target, overwrite)
-        logger.info(f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics")
+        logger.info(
+            f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics")
         compute_tweet_metrics(tweets, target, overwrite)
         logger.info(f"{date} -> done! :D")
 
 
 def compute_user_metrics(tweets, target_path, overwrite):
     users = None
-
+    logger = logging.getLogger(__name__)
     if overwrite or not (target_path / "unique_users.json.gz").exists():
         users = (
             tweets.drop_duplicates(subset="user.id")
