@@ -440,9 +440,9 @@ class TweetImporter(object):
             return 0
 
         if file_prefix is not None:
-            target_file = target_path / f"{file_prefix}.{i}.json.gz"
+            target_file = target_path / f"{file_prefix}.{i}.parquet"
         else:
-            target_file = target_path / f"{Path(filename).stem}.{i}.json.gz"
+            target_file = target_path / f"{Path(filename).stem}.{i}.parquet"
 
         adf["tweet.tokens"] = adf["text"].map(self.tokenize)
         adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
@@ -453,10 +453,12 @@ class TweetImporter(object):
             lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y"))
 
         # self.logger.info(f"(#{i}) read {len(adf)} tweets from {filename}")
-        adf.to_json(target_file,
-                    orient="records",
-                    force_ascii=False,
-                    lines=True,
-                    compression="gzip")
+        # adf.to_json(target_file,
+        #             orient="records",
+        #             force_ascii=False,
+        #             lines=True,
+        #             compression="gzip")
+        table = pa.Table.from_pandas(adf)
+        pq.write_table(table, target_file, use_dictionary=False)
 
         return len(adf)
