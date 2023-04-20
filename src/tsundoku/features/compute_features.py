@@ -503,13 +503,14 @@ def compute_user_metrics_arrow(tweets, target_path, overwrite):
 def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
 
     if overwrite or not (target_path / "tweets_per_user.parquet").exists():
-        tweets_per_user_table = pa.Table.from_pandas(
-            tweets.drop_duplicates("id")
-            .groupby("user.id")
-            .size()
-            .compute()
-            .reset_index()
-        )
+        tweets_per_user = (tweets.drop_duplicates("id")
+                           .groupby("user.id")
+                           .size()
+                           .compute()
+                           .reset_index())
+
+        tweets_per_user.columns = tweets_per_user.columns.astype(str)
+        tweets_per_user_table = pa.Table.from_pandas(tweets_per_user)
         pq.write_table(tweets_per_user_table, target_path
                        / "tweets_per_user.parquet", use_dictionary=False)
 
@@ -741,8 +742,8 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .join(user_stats, how="inner")
             .reset_index()
         )
-        pq.write_table(user_daily_stats, target_path
-                       / "user_daily_stats.parquet", use_dictionary=False)
+        user_daily_stats.to_parquet(
+            target_path, name_function=lambda i: f"user_daily_stats{f'_{i}' if i != 0 else ''}.parquet", engine="pyarrow")
 
 
 if __name__ == "__main__":
