@@ -1,4 +1,21 @@
 # -*- coding: utf-8 -*-
+from tsundoku.helpers import read_toml
+from tsundoku.features.urls import get_domain
+from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
+from tsundoku.features.helpers import filter_vocabulary
+from scipy.sparse import dok_matrix, save_npz
+from dotenv import find_dotenv, load_dotenv
+from aves.models.network import Network
+import toml
+import pandas as pd
+import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
+import graph_tool.topology
+import graph_tool
+import dask.dataframe as dd
+import dask
+import click
 import copy
 import logging
 import os
@@ -6,31 +23,17 @@ from glob import glob
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
-import matplotlib; matplotlib.use('agg');
-import click
-import dask
-import dask.dataframe as dd
-import graph_tool
-import graph_tool.topology
-import numpy as np
-import pandas as pd
-import toml
-from aves.models.network import Network
-from dotenv import find_dotenv, load_dotenv
-from scipy.sparse import dok_matrix, save_npz
-
-from tsundoku.features.helpers import filter_vocabulary
-from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
-from tsundoku.features.urls import get_domain
-from tsundoku.helpers import read_toml
+import matplotlib
+matplotlib.use('agg')
 
 
 @click.command()
 @click.option("--experiment", type=str, default="full")
 @click.option("--overwrite", type=bool, default=False)
-def main(experiment, overwrite):
+@click.option("--filetype", type=str, default="json")
+def main(experiment, overwrite, filetype):
     """Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready to be analyzed (saved in ../processed).
+    cleaned data ready to be analyzed (saved in ../processed/{filetype}).
     """
 
     experiment_name = experiment
@@ -43,7 +46,7 @@ def main(experiment, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / filetype
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -81,16 +84,18 @@ def main(experiment, overwrite):
     key_folders = list(key_folders)
 
     if not key_folders:
-        logging.info('There are no folders with experiment data. Check folder_start and folder_end settings.')
+        logging.info(
+            'There are no folders with experiment data. Check folder_start and folder_end settings.')
         return -1
 
     logging.info(f"Key Folders: {key_folders}")
 
     # let's go
 
-    data_base = Path(config["path"]["data"]) / "interim"
+    data_base = Path(config["path"]["data"]) / "interim" / filetype
     processed_path = (
-        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed"
+        / filetype / experimental_settings.get("key")
     )
 
     if not processed_path.exists():
@@ -108,119 +113,135 @@ def main(experiment, overwrite):
 
     # the full user network
     # user interactions
+
     for int_name, int_column in (
         ("reply", "in_reply_to_user_id"),
         ("quote", "quote.user.id"),
         ("retweet", "rt.user.id"),
     ):
         try:
-            interaction_dd = dd_from_paths(
-                [d / f"{int_name}_edgelist.json.gz" for d in data_paths])
+            if filetype == "json":
+                interaction_dd = dd_from_paths(
+                    [d / f"{int_name}_edgelist.json.gz" for d in data_paths])
+
+            elif filetype == "parquet":
+                interaction_dd = dd_from_parquet_paths(
+                    [d / f"{int_name}_edgelist.parquet" for d in data_paths])
         except:
-            df = pd.DataFrame(columns=["user.id", int_column,"frequency"])
-            interaction_dd = dd.from_pandas(df, npartitions = 0)
-        
-        group_user_interactions(
-            interaction_dd,
-            key_column,
-            int_column,
-            int_name,
-            processed_path,
-            overwrite=overwrite,
-        )
+            df = pd.DataFrame(columns=["user.id", int_column, "frequency"])
+            interaction_dd = dd.from_pandas(df, npartitions=0)
+
+        if filetype == "json":
+            group_user_interactions(
+                interaction_dd,
+                key_column,
+                int_column,
+                int_name,
+                processed_path,
+                overwrite=overwrite,
+            )
+
+        elif filetype == "parquet":
+            group_user_interactions_arrow(
+                interaction_dd,
+                key_column,
+                int_column,
+                int_name,
+                processed_path,
+                overwrite=overwrite,)
 
     # users
-    count_user_tweets(data_paths, processed_path, overwrite=overwrite)
-    group_users(
-        data_paths,
-        processed_path,
-        discussion_only=bool(experimental_settings.get("discussion_only", False)),
-        directed=bool(experimental_settings.get("discussion_directed", False)),
-        overwrite=overwrite,
-    )
+    # count_user_tweets_arrow(data_paths, processed_path, overwrite=overwrite)
+    # group_users(
+    #     data_paths,
+    #     processed_path,
+    #     discussion_only=bool(experimental_settings.get("discussion_only", False)),
+    #     directed=bool(experimental_settings.get("discussion_directed", False)),
+    #     overwrite=overwrite,
+    # )
 
-    # matrices
-    stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
+    # # matrices
+    # stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
 
-    if not stopwords_file.exists():
-        stopwords_file = None
+    # if not stopwords_file.exists():
+    #     stopwords_file = None
 
-    min_freq = experiment_config["thresholds"].get("name_tokens", 50)
-    # we read this again to catch changes in biographies and so on
-    users_dd = dd_from_paths([d / "unique_users.json.gz" for d in data_paths])
-    # this file exists from group_users
-    elem_to_id = (
-        pd.read_json(processed_path / "user.elem_ids.json.gz", lines=True)
-        .set_index("user.id")["row_id"]
-        .to_dict()
-    )
-    build_vocabulary_and_matrix(
-        users_dd,
-        processed_path,
-        elem_type,
-        key_column,
-        "user.name_tokens",
-        elem_to_id,
-        min_freq=min_freq,
-        stopwords_file=stopwords_file,
-        overwrite=overwrite,
-    )
+    # min_freq = experiment_config["thresholds"].get("name_tokens", 50)
+    # # we read this again to catch changes in biographies and so on
+    # users_dd = dd_from_paths([d / "unique_users.json.gz" for d in data_paths])
+    # # this file exists from group_users
+    # elem_to_id = (
+    #     pd.read_json(processed_path / "user.elem_ids.json.gz", lines=True)
+    #     .set_index("user.id")["row_id"]
+    #     .to_dict()
+    # )
+    # build_vocabulary_and_matrix(
+    #     users_dd,
+    #     processed_path,
+    #     elem_type,
+    #     key_column,
+    #     "user.name_tokens",
+    #     elem_to_id,
+    #     min_freq=min_freq,
+    #     stopwords_file=stopwords_file,
+    #     overwrite=overwrite,
+    # )
 
-    min_freq = experiment_config["thresholds"].get("description_tokens", 50)
-    build_vocabulary_and_matrix(
-        users_dd,
-        processed_path,
-        elem_type,
-        key_column,
-        "user.description_tokens",
-        elem_to_id,
-        min_freq=min_freq,
-        stopwords_file=stopwords_file,
-        overwrite=overwrite,
-    )
+    # min_freq = experiment_config["thresholds"].get("description_tokens", 50)
+    # build_vocabulary_and_matrix(
+    #     users_dd,
+    #     processed_path,
+    #     elem_type,
+    #     key_column,
+    #     "user.description_tokens",
+    #     elem_to_id,
+    #     min_freq=min_freq,
+    #     stopwords_file=stopwords_file,
+    #     overwrite=overwrite,
+    # )
 
-    # user-tweet matrix
-    terms_dd = dd_from_paths([d / "tweet_vocabulary.json.gz" for d in data_paths])
-    min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
-    build_user_tweets_term_matrix(
-        terms_dd,
-        processed_path,
-        elem_to_id,
-        min_freq=min_freq,
-        stopwords_file=stopwords_file,
-        overwrite=overwrite,
-    )
+    # # user-tweet matrix
+    # terms_dd = dd_from_paths([d / "tweet_vocabulary.json.gz" for d in data_paths])
+    # min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
+    # build_user_tweets_term_matrix(
+    #     terms_dd,
+    #     processed_path,
+    #     elem_to_id,
+    #     min_freq=min_freq,
+    #     stopwords_file=stopwords_file,
+    #     overwrite=overwrite,
+    # )
 
-    # user networks
-    for int_name, int_column in (
-        ("reply", "in_reply_to_user_id"),
-        ("quote", "quote.user.id"),
-        ("retweet", "rt.user.id"),
-    ):
-        # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
-        # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
-        build_network(
-            int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
-        )
+    # # user networks
+    # for int_name, int_column in (
+    #     ("reply", "in_reply_to_user_id"),
+    #     ("quote", "quote.user.id"),
+    #     ("retweet", "rt.user.id"),
+    # ):
+    #     # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
+    #     # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
+    #     build_network(
+    #         int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
+    #     )
 
-    # user tweet urls
-    urls_dd = dd_from_paths([d / "user_urls.json.gz" for d in data_paths])
-    min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
-    group_user_urls(
-        urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
-    )
+    # # user tweet urls
+    # urls_dd = dd_from_paths([d / "user_urls.json.gz" for d in data_paths])
+    # min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
+    # group_user_urls(
+    #     urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
+    # )
 
-    # user profile domains
-    min_freq = experiment_config["thresholds"].get("profile_domains", 10)
-    min_freq_tld = experiment_config["thresholds"].get("profile_tlds", 50)
-    group_profile_domains(
-        users_dd,
-        elem_to_id,
-        processed_path,
-        min_freq=min_freq,
-        min_freq_tld=min_freq_tld,
-        overwrite=overwrite,
-    )
+    # # user profile domains
+    # min_freq = experiment_config["thresholds"].get("profile_domains", 10)
+    # min_freq_tld = experiment_config["thresholds"].get("profile_tlds", 50)
+    # group_profile_domains(
+    #     users_dd,
+    #     elem_to_id,
+    #     processed_path,
+    #     min_freq=min_freq,
+    #     min_freq_tld=min_freq_tld,
+    #     overwrite=overwrite,
+    # )
 
 
 def dd_from_paths(paths, min_size=100):
@@ -228,6 +249,13 @@ def dd_from_paths(paths, min_size=100):
         filter(lambda x: os.path.exists(x) and os.stat(x).st_size >= min_size, paths)
     )
     return dd.read_json(valid_paths)
+
+
+def dd_from_parquet_paths(paths, min_size=100):
+    valid_paths = list(
+        filter(lambda x: os.path.exists(x) and os.stat(x).st_size >= min_size, paths)
+    )
+    return dd.read_parquet(valid_paths)
 
 
 def count_user_tweets(data_paths, destination_path, overwrite=False):
@@ -251,6 +279,32 @@ def count_user_tweets(data_paths, destination_path, overwrite=False):
     tweet_dd.reset_index().to_json(
         count_target, compression="gzip", orient="records", lines=True
     )
+    logging.info(f"user tweet counts -> {count_target}")
+
+
+def count_user_tweets_arrow(data_paths, destination_path, overwrite=False):
+    count_target = destination_path / "user.total_tweets.parquet"
+
+    if not overwrite and count_target.exists():
+        logging.info("total tweet counts were computed! skipping.")
+        return
+
+    tweet_dd = (
+        dd_from_parquet_paths([d / "tweets_per_user.parquet" for d in data_paths])
+        .groupby("user.id")["0"]
+        .sum()
+        .compute()
+        .rename("user.dataset_tweets")
+        .sort_values()
+    )
+
+    print(tweet_dd.describe())
+
+    # tweet_dd.reset_index().to_json(
+    #     count_target, compression="gzip", orient="records", lines=True
+    # )
+
+    pq.write_table(tweet_dd, count_target, use_dictionary=False)
     logging.info(f"user tweet counts -> {count_target}")
 
 
@@ -466,11 +520,12 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
         ("quote", "quote.user.id"),
         ("reply", "in_reply_to_user_id"),
     ):
-    
+
         layer = pd.read_json(
             processed_path / f"user.{layer_name}_edges.all.json.gz", lines=True
         )
-        if (layer.empty): layer = pd.DataFrame(columns=["user.id", layer_column,"frequency"])
+        if (layer.empty):
+            layer = pd.DataFrame(columns=["user.id", layer_column, "frequency"])
         layer.columns = ["source.id", "target.id", layer_name]
         layers = layers.merge(layer, how="outer").fillna(0)
         logging.info(f"full network layer {layer_name}: {layers.shape}")
@@ -583,6 +638,32 @@ def group_user_interactions(
         )
 
 
+def group_user_interactions_arrow(
+    interaction_dd,
+    source_column,
+    target_column,
+    interaction_name,
+    destination_path,
+    overwrite=False,
+):
+    interactions_target = (
+        destination_path / f"user.{interaction_name}_edges.all.parquet"
+    )
+
+    if not overwrite and interactions_target.exists():
+        logging.info(f"user.{interaction_name} exists! skipping.")
+    else:
+        interactions = (
+            interaction_dd.groupby([source_column, target_column]).sum().compute()
+        )
+        interactions_table = pa.Table.from_pandas(interactions.reset_index())
+        pq.write_table(interactions_table,
+                       interactions_target, use_dictionary=False)
+        logging.info(
+            f"user.{interaction_name} (#{len(interactions)}) -> {interactions_target}"
+        )
+
+
 def group_user_urls(
     urls_dd, elem_to_id, destination_path, min_freq=50, overwrite=False
 ):
@@ -666,7 +747,7 @@ def group_profile_domains(
         .dropna()
         .pipe(lambda x: x[x["user.url"].str.len() > 0].copy())
     )
-    
+
     profile_urls["user.profile_domain"] = profile_urls["user.url"].map(get_domain)
     profile_urls["user.main_domain"] = (
         profile_urls["user.profile_domain"].str.split(".").str.slice(-2).str.join(".")
@@ -679,7 +760,6 @@ def group_profile_domains(
         profile_urls.groupby("user.main_domain").size().rename("frequency")
     )
 
-    
     logging.info(f"profile_domains 5: {str(profile_domains)}")
     min_freq = 2
     profile_domains = (
@@ -688,9 +768,8 @@ def group_profile_domains(
         .to_frame()
         .assign(token_id=lambda x: range(len(x)))
     )
-    
-    logging.info(f"profile_domains 6: {str(profile_domains)}")
 
+    logging.info(f"profile_domains 6: {str(profile_domains)}")
 
     profile_domains.reset_index().to_json(
         profile_domains_target, compression="gzip", orient="records", lines=True
@@ -699,8 +778,8 @@ def group_profile_domains(
 
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
 
-
-    logging.info(f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
+    logging.info(
+        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
     user_main_domain_matrix = dok_matrix(
         (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
     )

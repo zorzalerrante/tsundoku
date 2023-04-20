@@ -26,7 +26,7 @@ from tsundoku.helpers import read_toml, write_json
 @click.option("--filetype", type=str, default="json")
 def main(start_at, overwrite, filetype):
     """Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready to be analyzed (saved in ../interim).
+    cleaned data ready to be analyzed (saved in ../interim/{filetype}).
     """
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
