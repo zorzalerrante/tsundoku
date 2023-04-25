@@ -160,57 +160,58 @@ def main(experiment, overwrite, filetype):
         overwrite=overwrite,
     )
 
-    # # matrices
-    # stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
+    # matrices
+    stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
 
-    # if not stopwords_file.exists():
-    #     stopwords_file = None
+    if not stopwords_file.exists():
+        stopwords_file = None
 
-    # min_freq = experiment_config["thresholds"].get("name_tokens", 50)
-    # # we read this again to catch changes in biographies and so on
-    # users_dd = dd_from_paths([d / "unique_users.json.gz" for d in data_paths])
-    # # this file exists from group_users
-    # elem_to_id = (
-    #     pd.read_json(processed_path / "user.elem_ids.json.gz", lines=True)
-    #     .set_index("user.id")["row_id"]
-    #     .to_dict()
-    # )
-    # build_vocabulary_and_matrix(
-    #     users_dd,
-    #     processed_path,
-    #     elem_type,
-    #     key_column,
-    #     "user.name_tokens",
-    #     elem_to_id,
-    #     min_freq=min_freq,
-    #     stopwords_file=stopwords_file,
-    #     overwrite=overwrite,
-    # )
+    min_freq = experiment_config["thresholds"].get("name_tokens", 50)
+    # we read this again to catch changes in biographies and so on
+    users_dd = dd_from_parquet_paths([d / "unique_users.parquet" for d in data_paths])
+    # this file exists from group_users
+    elem_to_id = (
+        dd.read_parquet(processed_path / "user.elem_ids.parquet")
+        .set_index("user.id")["row_id"]
+        .compute()
+        .to_dict()
+    )
+    build_vocabulary_and_matrix_arrow(
+        users_dd,
+        processed_path,
+        elem_type,
+        key_column,
+        "user.name_tokens",
+        elem_to_id,
+        min_freq=min_freq,
+        stopwords_file=stopwords_file,
+        overwrite=overwrite,
+    )
 
-    # min_freq = experiment_config["thresholds"].get("description_tokens", 50)
-    # build_vocabulary_and_matrix(
-    #     users_dd,
-    #     processed_path,
-    #     elem_type,
-    #     key_column,
-    #     "user.description_tokens",
-    #     elem_to_id,
-    #     min_freq=min_freq,
-    #     stopwords_file=stopwords_file,
-    #     overwrite=overwrite,
-    # )
+    min_freq = experiment_config["thresholds"].get("description_tokens", 50)
+    build_vocabulary_and_matrix_arrow(
+        users_dd,
+        processed_path,
+        elem_type,
+        key_column,
+        "user.description_tokens",
+        elem_to_id,
+        min_freq=min_freq,
+        stopwords_file=stopwords_file,
+        overwrite=overwrite,
+    )
 
-    # # user-tweet matrix
-    # terms_dd = dd_from_paths([d / "tweet_vocabulary.json.gz" for d in data_paths])
-    # min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
-    # build_user_tweets_term_matrix(
-    #     terms_dd,
-    #     processed_path,
-    #     elem_to_id,
-    #     min_freq=min_freq,
-    #     stopwords_file=stopwords_file,
-    #     overwrite=overwrite,
-    # )
+    # user-tweet matrix
+    terms_dd = dd_from_paths([d / "tweet_vocabulary.json.gz" for d in data_paths])
+    min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
+    build_user_tweets_term_matrix(
+        terms_dd,
+        processed_path,
+        elem_to_id,
+        min_freq=min_freq,
+        stopwords_file=stopwords_file,
+        overwrite=overwrite,
+    )
 
     # # user networks
     # for int_name, int_column in (
@@ -351,8 +352,8 @@ def group_users(
 def group_users_arrow(
     data_paths, processed_path, discussion_only=True, directed=False, overwrite=False
 ):
-    target_file = processed_path / "user.unique.paruet"
-    elem_ids_target = processed_path / "user.elem_ids.paruet"
+    target_file = processed_path / "user.unique.parquet"
+    elem_ids_target = processed_path / "user.elem_ids.parquet"
 
     if not overwrite and (target_file.exists() and elem_ids_target.exists()):
         logging.info("users were already grouped! skipping.")
@@ -385,7 +386,7 @@ def group_users_arrow(
     pq.write_table(users_table, target_file, use_dictionary=False)
     logging.info(f"#{len(users)} users -> {target_file}")
 
-    (
+    users = (
         users[["user.id"]]
         .assign(row_id=lambda x: range(len(x)))
     )
@@ -453,6 +454,77 @@ def build_vocabulary_and_matrix(
             relevant_vocabulary = pd.read_json(
                 relevant_vocabulary_target, lines=True
             ).set_index("token")
+        token_to_id = relevant_vocabulary["token_id"].to_dict()
+        token_matrices = dask_df.map_partitions(
+            lambda df: tokens_to_document_term_matrix(
+                df, key_column, token_column, token_to_id, id_to_row=elem_to_id
+            ),
+            meta=(
+                "matrix",
+                np.dtype("O"),
+            ),
+        )
+        token_matrix = token_matrices.compute().sum()
+        save_npz(token_matrix_target, token_matrix)
+        logging.info(f"{elem_type}.{token_column} matrix -> {token_matrix_target}")
+
+
+def build_vocabulary_and_matrix_arrow(
+    dask_df,
+    destination_path,
+    elem_type,
+    key_column,
+    token_column,
+    elem_to_id,
+    to_lower=True,
+    min_freq=50,
+    remove_punctuation=True,
+    stopwords_file=None,
+    overwrite=False,
+):
+    vocabulary_target = destination_path / "{}.{}.all.parquet".format(
+        elem_type, token_column.replace(elem_type + ".", "")
+    )
+    relevant_vocabulary_target = destination_path / "{}.{}.relevant.parquet".format(
+        elem_type, token_column.replace(elem_type + ".", "")
+    )
+    token_matrix_target = destination_path / "{}.{}.matrix.npz".format(
+        elem_type, token_column.replace(elem_type + ".", "")
+    )
+    relevant_vocabulary = None
+
+    if not overwrite and (
+        vocabulary_target.exists() and relevant_vocabulary_target.exists()
+    ):
+        logging.info("vocabulary was computed! skipping.")
+        # relevant_vocabulary = pd.read_json(relevant_vocabulary_target, lines=True)
+    else:
+        vocabulary = build_vocabulary(dask_df, token_column, to_lower=to_lower)
+        vocabulary_table = pa.Table.from_pandas(vocabulary.reset_index())
+        pq.write_table(vocabulary_table, vocabulary_target, use_dictionary=False)
+        logging.info(f"{elem_type}.{token_column} vocabulary -> {vocabulary_target}")
+
+        relevant_vocabulary = filter_vocabulary(
+            vocabulary,
+            min_freq=min_freq,
+            stopwords_file=stopwords_file,
+            remove_punctuation=remove_punctuation,
+        )
+
+        logging.info(
+            f"{elem_type}.{token_column} relevant vocabulary -> {relevant_vocabulary_target}"
+        )
+        relevant_vocabulary_table = pa.Table.from_pandas(
+            relevant_vocabulary.reset_index())
+        pq.write_table(relevant_vocabulary_table,
+                       relevant_vocabulary_target, use_dictionary=False)
+
+    if not overwrite and token_matrix_target.exists():
+        logging.info(f"{elem_type}.{token_column} matrix exists! skipping.")
+    else:
+        if relevant_vocabulary is None:
+            relevant_vocabulary = dd.read_parquet(
+                relevant_vocabulary_target).set_index("token")
         token_to_id = relevant_vocabulary["token_id"].to_dict()
         token_matrices = dask_df.map_partitions(
             lambda df: tokens_to_document_term_matrix(
