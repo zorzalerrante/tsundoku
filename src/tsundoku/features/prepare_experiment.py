@@ -151,14 +151,14 @@ def main(experiment, overwrite, filetype):
                 overwrite=overwrite,)
 
     # users
-    # count_user_tweets_arrow(data_paths, processed_path, overwrite=overwrite)
-    # group_users(
-    #     data_paths,
-    #     processed_path,
-    #     discussion_only=bool(experimental_settings.get("discussion_only", False)),
-    #     directed=bool(experimental_settings.get("discussion_directed", False)),
-    #     overwrite=overwrite,
-    # )
+    count_user_tweets_arrow(data_paths, processed_path, overwrite=overwrite)
+    group_users_arrow(
+        data_paths,
+        processed_path,
+        discussion_only=bool(experimental_settings.get("discussion_only", False)),
+        directed=bool(experimental_settings.get("discussion_directed", False)),
+        overwrite=overwrite,
+    )
 
     # # matrices
     # stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
@@ -296,15 +296,11 @@ def count_user_tweets_arrow(data_paths, destination_path, overwrite=False):
         .compute()
         .rename("user.dataset_tweets")
         .sort_values()
+        .reset_index()
     )
 
-    print(tweet_dd.describe())
-
-    # tweet_dd.reset_index().to_json(
-    #     count_target, compression="gzip", orient="records", lines=True
-    # )
-
-    pq.write_table(tweet_dd, count_target, use_dictionary=False)
+    tweet_dd_table = pa.Table.from_pandas(tweet_dd)
+    pq.write_table(tweet_dd_table, count_target, use_dictionary=False)
     logging.info(f"user tweet counts -> {count_target}")
 
 
@@ -348,6 +344,54 @@ def group_users(
         .assign(row_id=lambda x: range(len(x)))
         .to_json(elem_ids_target, compression="gzip", orient="records", lines=True)
     )
+
+    logging.info(f"user row ids -> {elem_ids_target}")
+
+
+def group_users_arrow(
+    data_paths, processed_path, discussion_only=True, directed=False, overwrite=False
+):
+    target_file = processed_path / "user.unique.paruet"
+    elem_ids_target = processed_path / "user.elem_ids.paruet"
+
+    if not overwrite and (target_file.exists() and elem_ids_target.exists()):
+        logging.info("users were already grouped! skipping.")
+        return
+
+    users = (
+        dd_from_parquet_paths([d / "unique_users.parquet" for d in data_paths])
+        .compute()
+        .drop_duplicates(subset="user.id", keep="last")
+    )
+
+    if discussion_only:
+        logging.info(f"total #users before filtering by discussion: {len(users)}")
+        nodes_in_largest = find_nodes_in_discussion_arrow(
+            processed_path, directed=directed)
+        users = users[users["user.id"].isin(nodes_in_largest)]
+
+    logging.info(f"total #users: {len(users)}")
+
+    tweet_count = dd.read_parquet(
+        processed_path / "user.total_tweets.parquet"
+    ).set_index("user.id").compute()
+
+    users = users.join(tweet_count, on="user.id", how="inner").sort_values(
+        "user.dataset_tweets", ascending=False
+    )
+    logging.info(f"total #users after joining with tweet count: {len(users)}")
+
+    users_table = pa.Table.from_pandas(users)
+    pq.write_table(users_table, target_file, use_dictionary=False)
+    logging.info(f"#{len(users)} users -> {target_file}")
+
+    (
+        users[["user.id"]]
+        .assign(row_id=lambda x: range(len(x)))
+    )
+
+    users_table = pa.Table.from_pandas(users)
+    pq.write_table(users_table, elem_ids_target, use_dictionary=False)
 
     logging.info(f"user row ids -> {elem_ids_target}")
 
@@ -528,6 +572,43 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
             layer = pd.DataFrame(columns=["user.id", layer_column, "frequency"])
         layer.columns = ["source.id", "target.id", layer_name]
         layers = layers.merge(layer, how="outer").fillna(0)
+        logging.info(f"full network layer {layer_name}: {layers.shape}")
+
+    for layer_name in ["retweet", "reply", "quote"]:
+        layers[layer_name] = layers[layer_name].astype(int)
+
+    layers["weight"] = layers[["retweet", "reply", "quote"]].sum(axis=1)
+
+    network = Network.from_edgelist(
+        layers,
+        source="source.id",
+        target="target.id",
+        weight="weight",
+        directed=True,
+    ).largest_connected_component(directed=directed)
+
+    nodes_in_largest = list(network.graph.vertex_properties["elem_id"])
+
+    return nodes_in_largest
+
+
+def find_nodes_in_discussion_arrow(processed_path, directed=False, overwrite=False):
+    layers = pd.DataFrame(columns=["source.id", "target.id"])
+
+    for layer_name, layer_column in (
+        ("retweet", "rt.user.id"),
+        ("quote", "quote.user.id"),
+        ("reply", "in_reply_to_user_id"),
+    ):
+
+        layer = dd.read_parquet(
+            processed_path / f"user.{layer_name}_edges.all.parquet"
+        )
+        if len(layer.columns) == 0:
+            layer = pd.DataFrame(columns=["user.id", layer_column, "frequency"])
+        layer.columns = ["source.id", "target.id", layer_name]
+        layer_pd = layer.compute()
+        layers = layers.merge(layer_pd, how="outer").fillna(0)
         logging.info(f"full network layer {layer_name}: {layers.shape}")
 
     for layer_name in ["retweet", "reply", "quote"]:
