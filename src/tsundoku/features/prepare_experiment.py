@@ -214,17 +214,17 @@ def main(experiment, overwrite, filetype):
         overwrite=overwrite,
     )
 
-    # # user networks
-    # for int_name, int_column in (
-    #     ("reply", "in_reply_to_user_id"),
-    #     ("quote", "quote.user.id"),
-    #     ("retweet", "rt.user.id"),
-    # ):
-    #     # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
-    #     # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
-    #     build_network(
-    #         int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
-    #     )
+    # user networks
+    for int_name, int_column in (
+        ("reply", "in_reply_to_user_id"),
+        ("quote", "quote.user.id"),
+        ("retweet", "rt.user.id"),
+    ):
+        # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
+        # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
+        build_network_arrow(
+            int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
+        )
 
     # # user tweet urls
     # urls_dd = dd_from_paths([d / "user_urls.json.gz" for d in data_paths])
@@ -829,6 +829,70 @@ def build_network(
         .reset_index()
         .to_json(id_to_node_path, orient="records", lines=True)
     )
+
+    edges["source"] = edges[source_column].map(id_to_node)
+    edges["target"] = edges[target_column].map(id_to_node)
+
+    # users that are not in the network: an empty row. we need it, but we don't need empty columns
+    sparse_adjacency_matrix = dok_matrix(
+        (len(elem_to_id), len(id_to_node)), dtype=int
+    )
+
+    for row in edges.itertuples():
+        sparse_adjacency_matrix[
+            getattr(row, "source"), getattr(row, "target")
+        ] = getattr(row, "frequency")
+
+    sparse_adjacency_matrix = sparse_adjacency_matrix.tocsr()
+    save_npz(adjacency_matrix_path, sparse_adjacency_matrix)
+    logging.info(
+        f"{name} adjacency matrix ({repr(sparse_adjacency_matrix)}) -> {adjacency_matrix_path}"
+    )
+
+
+def build_network_arrow(
+    name,
+    target_column,
+    elem_to_id,
+    destination_path,
+    source_column="user.id",
+    overwrite=False,
+):
+    edges_path = destination_path / f"user.{name}_edges.all.parquet"
+    id_to_node_path = destination_path / f"network.{name}.target_ids.parquet"
+    adjacency_matrix_path = destination_path / f"network.{name}.matrix.npz"
+
+    if not overwrite and (id_to_node_path.exists() and adjacency_matrix_path.exists()):
+        logging.info(f"{name} adjacency matrix exists! skipping.")
+        return
+
+    edges = dd.read_parquet(edges_path, lines=True).pipe(
+        lambda x: x[x[source_column].isin(elem_to_id.keys())]
+    )
+
+    unique_user_ids = set(edges[source_column].unique()) | set(
+        edges[target_column].unique()
+    )
+    id_to_node = copy.deepcopy(elem_to_id)
+
+    non_dataset_users = list(filter(lambda x: not x in id_to_node, unique_user_ids))
+
+    id_to_node.update(
+        dict(
+            zip(
+                non_dataset_users,
+                range(len(id_to_node), len(id_to_node) + len(non_dataset_users)),
+            )
+        )
+    )
+
+    id_to_node_df = (
+        pd.Series(id_to_node)
+        .rename("node_id")
+        .reset_index()
+    )
+    id_to_node_df = pa.Table.from_pandas(id_to_node_df)
+    pq.write_table(id_to_node_df, id_to_node_path, use_dictionary=False)
 
     edges["source"] = edges[source_column].map(id_to_node)
     edges["target"] = edges[target_column].map(id_to_node)
