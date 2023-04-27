@@ -233,17 +233,17 @@ def main(experiment, overwrite, filetype):
         urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
     )
 
-    # # user profile domains
-    # min_freq = experiment_config["thresholds"].get("profile_domains", 10)
-    # min_freq_tld = experiment_config["thresholds"].get("profile_tlds", 50)
-    # group_profile_domains(
-    #     users_dd,
-    #     elem_to_id,
-    #     processed_path,
-    #     min_freq=min_freq,
-    #     min_freq_tld=min_freq_tld,
-    #     overwrite=overwrite,
-    # )
+    # user profile domains
+    min_freq = experiment_config["thresholds"].get("profile_domains", 10)
+    min_freq_tld = experiment_config["thresholds"].get("profile_tlds", 50)
+    group_profile_domains_arrow(
+        users_dd,
+        elem_to_id,
+        processed_path,
+        min_freq=min_freq,
+        min_freq_tld=min_freq_tld,
+        overwrite=overwrite,
+    )
 
 
 def dd_from_paths(paths, min_size=100):
@@ -1169,6 +1169,118 @@ def group_profile_domains(
     profile_tlds.reset_index().to_json(
         profile_tlds_target, compression="gzip", orient="records", lines=True
     )
+    logging.info(f"user.profile_tlds -> {profile_tlds_target}")
+
+    tld_to_id = dict(zip(profile_tlds.index, range(len(profile_tlds))))
+
+    user_tld_matrix = dok_matrix(
+        (max(elem_to_id.values()) + 1, max(tld_to_id.values()) + 1), dtype=int
+    )
+
+    for row in profile_urls.set_index(["user.id", "user.tld"]).itertuples():
+        try:
+            row_id = elem_to_id[row.Index[0]]
+            column_id = tld_to_id[row.Index[1]]
+        except KeyError:
+            continue
+        user_tld_matrix[row_id, column_id] = 1
+
+    user_tld_matrix = user_tld_matrix.tocsr()
+
+    save_npz(user_tld_matrix_target, user_tld_matrix)
+    logging.info(
+        f"user.tld_domain matrix ({repr(user_tld_matrix)}) -> {user_tld_matrix_target}"
+    )
+
+
+def group_profile_domains_arrow(
+    users_dd,
+    elem_to_id,
+    destination_path,
+    min_freq=10,
+    min_freq_tld=50,
+    overwrite=False,
+):
+    profile_domains_target = destination_path / "user.profile_domains.relevant.parquet"
+    user_main_domain_matrix_target = (
+        destination_path / "user.profile_domains.matrix.npz"
+    )
+    profile_tlds_target = destination_path / "user.profile_tlds.relevant.parquet"
+    user_tld_matrix_target = destination_path / "user.profile_tlds.matrix.npz"
+
+    if not overwrite and (
+        user_main_domain_matrix_target.exists() and user_tld_matrix_target.exists()
+    ):
+        logging.info(f"user.profile_domains exist! skipping.")
+        return
+
+    profile_urls = (
+        users_dd[["user.id", "user.url"]]
+        .compute()
+        .dropna()
+        .pipe(lambda x: x[x["user.url"].str.len() > 0].copy())
+    )
+
+    profile_urls["user.profile_domain"] = profile_urls["user.url"].map(get_domain)
+    profile_urls["user.main_domain"] = (
+        profile_urls["user.profile_domain"].str.split(".").str.slice(-2).str.join(".")
+    )
+    profile_urls["user.tld"] = (
+        profile_urls["user.main_domain"].str.split(".").str.slice(-1).str.join("")
+    )
+
+    profile_domains = (
+        profile_urls.groupby("user.main_domain").size().rename("frequency")
+    )
+
+    logging.info(f"profile_domains 5: {str(profile_domains)}")
+    min_freq = 2
+    profile_domains = (
+        profile_domains[profile_domains >= min_freq]
+        .sort_values(ascending=False)
+        .to_frame()
+        .assign(token_id=lambda x: range(len(x)))
+    )
+
+    logging.info(f"profile_domains 6: {str(profile_domains)}")
+
+    profile_domains_table = pa.Table.from_pandas(profile_domains.reset_index())
+    pq.write_table(profile_domains_table, profile_domains_target, use_dictionary=False)
+    logging.info(f"user.profile_domains -> {profile_domains_target}")
+
+    domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
+
+    logging.info(
+        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
+    user_main_domain_matrix = dok_matrix(
+        (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
+    )
+
+    for row in profile_urls.set_index(["user.id", "user.main_domain"]).itertuples():
+        try:
+            row_id = elem_to_id[row.Index[0]]
+            column_id = domain_to_id[row.Index[1]]
+        except KeyError:
+            continue
+        user_main_domain_matrix[row_id, column_id] = 1
+
+    user_main_domain_matrix = user_main_domain_matrix.tocsr()
+
+    save_npz(user_main_domain_matrix_target, user_main_domain_matrix)
+    logging.info(
+        f"user.main_domain matrix ({repr(user_main_domain_matrix)}) -> {user_main_domain_matrix_target}"
+    )
+
+    profile_tlds = profile_urls.groupby("user.tld").size().rename("frequency")
+    profile_tlds = (
+        profile_tlds[profile_tlds >= min_freq_tld]
+        .sort_values(ascending=False)
+        .to_frame()
+        .assign(token_id=lambda x: range(len(x)))
+    )
+
+    profile_tlds_table = pa.Table.from_pandas(profile_tlds.reset_index())
+    pq.write_table(profile_tlds_table, profile_tlds_target, use_dictionary=False)
     logging.info(f"user.profile_tlds -> {profile_tlds_target}")
 
     tld_to_id = dict(zip(profile_tlds.index, range(len(profile_tlds))))
