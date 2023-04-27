@@ -202,9 +202,10 @@ def main(experiment, overwrite, filetype):
     )
 
     # user-tweet matrix
-    terms_dd = dd_from_paths([d / "tweet_vocabulary.json.gz" for d in data_paths])
+    terms_dd = dd_from_parquet_paths(
+        [d / "tweet_vocabulary.parquet" for d in data_paths])
     min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
-    build_user_tweets_term_matrix(
+    build_user_tweets_term_matrix_arrow(
         terms_dd,
         processed_path,
         elem_to_id,
@@ -497,7 +498,6 @@ def build_vocabulary_and_matrix_arrow(
         vocabulary_target.exists() and relevant_vocabulary_target.exists()
     ):
         logging.info("vocabulary was computed! skipping.")
-        # relevant_vocabulary = pd.read_json(relevant_vocabulary_target, lines=True)
     else:
         vocabulary = build_vocabulary(dask_df, token_column, to_lower=to_lower)
         vocabulary_table = pa.Table.from_pandas(vocabulary.reset_index())
@@ -590,6 +590,92 @@ def build_user_tweets_term_matrix(
             relevant_full_vocabulary = pd.read_json(
                 relevant_full_vocabulary_target, lines=True
             ).set_index("token")
+
+        # print(elem_to_id)
+        user_tweet_frequency = (
+            term_frequencies.pipe(
+                lambda x: x[
+                    (x["user.id"].isin(elem_to_id.keys()))
+                    & (x["token"].isin(relevant_full_vocabulary.index))
+                ]
+            )
+            .groupby(["user.id", "token"])
+            .sum()
+            .compute()
+        )
+
+        logging.info(f"user_tweet_frequency: {user_tweet_frequency.shape}")
+
+        tweet_token_to_id = relevant_full_vocabulary["token_id"].to_dict()
+        # print(tweet_token_to_id)
+
+        dtm = dok_matrix(
+            (max(elem_to_id.values()) + 1, max(tweet_token_to_id.values()) + 1),
+            dtype=int,
+        )
+
+        for row in user_tweet_frequency.itertuples():
+            if not row.Index[0] in elem_to_id:
+                continue
+            row_id = elem_to_id[row.Index[0]]
+            column_id = tweet_token_to_id[row.Index[1]]
+            dtm[row_id, column_id] = getattr(row, "frequency")
+
+        dtm = dtm.tocsr()
+        logging.info(f"user.tweet_tokens matrix: {repr(dtm)}")
+
+        save_npz(tweet_matrix_target, dtm)
+        logging.info(f"user.tweet_tokens matrix -> {tweet_matrix_target}")
+
+
+def build_user_tweets_term_matrix_arrow(
+    term_frequencies,
+    destination_path,
+    elem_to_id,
+    min_freq=50,
+    stopwords_file=None,
+    overwrite=False,
+):
+    full_vocabulary_target = destination_path / "user.tweet_vocabulary.all.parquet"
+    relevant_full_vocabulary_target = (
+        destination_path / "user.tweet_vocabulary.relevant.parquet"
+    )
+    tweet_matrix_target = destination_path / "user.tweets.matrix.npz"
+
+    relevant_full_vocabulary = None
+
+    if not overwrite and (
+        full_vocabulary_target.exists() and relevant_full_vocabulary_target.exists()
+    ):
+        logging.info("vocabulary was computed! skipping.")
+    else:
+        full_vocabulary = term_frequencies.groupby("token")["frequency"].sum().compute()
+        full_vocabulary_table = pa.Table.from_pandas(full_vocabulary.reset_index())
+        pq.write_table(full_vocabulary_table,
+                       full_vocabulary_target, use_dictionary=False)
+        logging.info(f"user.tweet_tokens vocabulary -> {full_vocabulary_target}")
+
+        relevant_full_vocabulary = filter_vocabulary(
+            full_vocabulary.reset_index(),
+            min_freq=min_freq,
+            stopwords_file=stopwords_file,
+            remove_punctuation=True,
+        )
+        relevant_full_vocabulary_table = pa.Table.from_pandas(
+            relevant_full_vocabulary.reset_index())
+        pq.write_table(relevant_full_vocabulary_table,
+                       relevant_full_vocabulary_target, use_dictionary=False)
+
+        logging.info(
+            f"user.tweet_tokens relevant vocabulary -> {relevant_full_vocabulary_target}"
+        )
+
+    if not overwrite and tweet_matrix_target.exists():
+        logging.info(f"user.tweet_tokens matrix exists! skipping.")
+    else:
+        if relevant_full_vocabulary is None:
+            relevant_full_vocabulary = dd.read_parquet(
+                relevant_full_vocabulary_target).set_index("token")
 
         # print(elem_to_id)
         user_tweet_frequency = (
