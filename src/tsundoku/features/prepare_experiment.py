@@ -226,12 +226,12 @@ def main(experiment, overwrite, filetype):
             int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
         )
 
-    # # user tweet urls
-    # urls_dd = dd_from_paths([d / "user_urls.json.gz" for d in data_paths])
-    # min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
-    # group_user_urls(
-    #     urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
-    # )
+    # user tweet urls
+    urls_dd = dd_from_parquet_paths([d / "user_urls.parquet" for d in data_paths])
+    min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
+    group_user_urls_arrow(
+        urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
+    )
 
     # # user profile domains
     # min_freq = experiment_config["thresholds"].get("profile_domains", 10)
@@ -997,6 +997,62 @@ def group_user_urls(
     url_frequency_relevant.reset_index().to_json(
         url_frequency_relevant_target, compression="gzip", orient="records", lines=True
     )
+    logging.info(
+        f"user.domains relevant vocabulary ({len(url_frequency_relevant)}) -> {url_frequency_relevant_target}"
+    )
+
+    urls_relevant = urls[urls["domain"].isin(url_frequency_relevant.index)].set_index(
+        ["user.id", "domain"]
+    )
+
+    url_to_id = url_frequency_relevant["token_id"].to_dict()
+
+    dtm = dok_matrix(
+        (max(elem_to_id.values()) + 1, max(url_to_id.values()) + 1), dtype=int
+    )
+
+    for row in urls_relevant.itertuples():
+        if not row.Index[0] in elem_to_id:
+            continue
+        row_id = elem_to_id[row.Index[0]]
+        column_id = url_to_id[row.Index[1]]
+        dtm[row_id, column_id] = getattr(row, "frequency")
+
+    dtm = dtm.tocsr()
+    save_npz(url_matrix_target, dtm)
+    logging.info(f"user.domains matrix ({repr(dtm)}) -> {url_matrix_target}")
+
+
+def group_user_urls_arrow(
+    urls_dd, elem_to_id, destination_path, min_freq=50, overwrite=False
+):
+    url_frequency_target = destination_path / "user.domains.all.parquet"
+    url_frequency_relevant_target = destination_path / "user.domains.relevant.parquet"
+    url_matrix_target = destination_path / "user.domains.matrix.npz"
+    url_frequency_target = destination_path / "user.domains.all.parquet"
+    url_matrix_target = destination_path / "user.domains.matrix.npz"
+
+    if not overwrite and url_matrix_target.exists():
+        logging.info(f"user.domains matrix exists! skipping.")
+        return
+
+    urls = urls_dd.groupby(["user.id", "domain"]).sum().compute().reset_index()
+
+    url_frequency = (
+        urls.groupby("domain")["frequency"].sum().sort_values(ascending=False)
+    )
+    url_frequency_table = pa.Table.from_pandas(url_frequency.reset_index())
+    pq.write_table(url_frequency_table, url_frequency_target, use_dictionary=False)
+
+    url_frequency_relevant = (
+        url_frequency[url_frequency >= min_freq]
+        .to_frame()
+        .assign(token_id=lambda x: range(len(x)))
+    )
+    url_frequency_relevant_table = pa.Table.from_pandas(
+        url_frequency_relevant.reset_index())
+    pq.write_table(url_frequency_relevant_table,
+                   url_frequency_relevant_target, use_dictionary=False)
     logging.info(
         f"user.domains relevant vocabulary ({len(url_frequency_relevant)}) -> {url_frequency_relevant_target}"
     )
