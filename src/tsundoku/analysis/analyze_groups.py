@@ -16,6 +16,7 @@ import graph_tool.topology
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+import pyarrow as pa
 import toml
 from aves.models.network import Network
 from scipy.sparse import dok_matrix, save_npz
@@ -91,8 +92,10 @@ def main(experiment, group, overwrite):
     data_base = Path(config["path"]["data"]) / "interim" / "parquet"
     data_paths = [data_base / key for key in key_folders]
     processed_path = (
-        Path(config["path"]["data"]) / "processed"
-        / "parquet" / experimental_settings.get("key")
+        Path(config["path"]["data"])
+        / "processed"
+        / "parquet"
+        / experimental_settings.get("key")
     )
     target_path = processed_path / "consolidated"
 
@@ -103,38 +106,39 @@ def main(experiment, group, overwrite):
     user_ids = consolidate_users(
         processed_path, target_path, group, overwrite=overwrite
     )
-    # aggregate_daily_stats(
-    #     data_paths, processed_path, user_ids, target_path, group, overwrite=overwrite
-    # )
-    # sum_word_frequencies_per_group(
-    #     data_paths, processed_path, target_path, group, overwrite=overwrite
-    # )
-    # identify_network_lcc(
-    #     processed_path,
-    #     target_path,
-    #     user_ids,
-    #     "rt.user.id",
-    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-    #     network_type="retweet",
-    # )
+    aggregate_daily_stats(
+        data_paths, processed_path, user_ids, target_path, group, overwrite=overwrite
+    )
+    sum_word_frequencies_per_group(
+        data_paths, processed_path, target_path, group, overwrite=overwrite
+    )
 
-    # identify_network_lcc(
-    #     processed_path,
-    #     target_path,
-    #     user_ids,
-    #     "quote.user.id",
-    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-    #     network_type="quote",
-    # )
+    identify_network_lcc(
+        processed_path,
+        target_path,
+        user_ids,
+        "rt.user.id",
+        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+        network_type="retweet",
+    )
 
-    # identify_network_lcc(
-    #     processed_path,
-    #     target_path,
-    #     user_ids,
-    #     "in_reply_to_user_id",
-    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-    #     network_type="reply",
-    # )
+    identify_network_lcc(
+        processed_path,
+        target_path,
+        user_ids,
+        "quote.user.id",
+        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+        network_type="quote",
+    )
+
+    identify_network_lcc(
+        processed_path,
+        target_path,
+        user_ids,
+        "in_reply_to_user_id",
+        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+        network_type="reply",
+    )
 
 
 def read_daily_stats(source_folder, user_ids):
@@ -155,7 +159,7 @@ def aggregate_daily_stats(
     aggregation_group,
     overwrite=False,
 ):
-    daily_stats_target_path = target_path / "user.daily_stats.json.gz"
+    daily_stats_target_path = target_path / "user.daily_stats.parquet"
 
     if not overwrite and daily_stats_target_path.exists():
         logging.info(
@@ -171,7 +175,7 @@ def aggregate_daily_stats(
         else:
             logging.info(f"Daily Stats: {folder} does not exist")
 
-    results = pd.concat(dask.compute(tasks)[0]).sort_values("date")
+    results = pd.concat(dask.compute(tasks)[0]).sort_values("date").set_index("user.id")
 
     user_groups = (
         dd.read_parquet(
@@ -180,11 +184,14 @@ def aggregate_daily_stats(
         .pipe(lambda x: x[x["predicted_class"] != "noise"])
         .set_index("user.id")["predicted_class"]
         .rename(f"predicted.{aggregation_group}")
+        .compute()
     )
 
     (
-        results.join(user_groups, on="user.id", how="inner").to_json(
-            daily_stats_target_path, compression="gzip", orient="records", lines=True
+        results.join(user_groups, how="inner").to_parquet(
+            daily_stats_target_path,
+            engine="pyarrow",
+            use_dictionary=False,
         )
     )
 
@@ -233,7 +240,7 @@ def sum_word_frequencies_per_group(
             tasks.append(
                 dask.delayed(count_group_vocabulary)(
                     folder, user_groups, aggregation_group
-                )
+                ).compute()
             )
         else:
             logging.info(f"Daily Frequencies: {folder} does not exist")
@@ -241,11 +248,12 @@ def sum_word_frequencies_per_group(
     results = pd.concat(dask.compute(tasks)[0]).sort_values("date")
 
     (
-        results.to_json(
-            frequencies_target_path, compression="gzip", orient="records", lines=True
+        results.to_parquet(
+            frequencies_target_path,
+            engine="pyarrow",
+            use_dictionary=False,
         )
     )
-
     logging.info(f"Daily Frequencies -> {frequencies_target_path}")
 
 
@@ -287,9 +295,7 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
             )
             continue
 
-        user_predictions = dd.read_parquet(predictions_path).set_index(
-            "user.id"
-        )
+        user_predictions = dd.read_parquet(predictions_path).set_index("user.id")
         invalid_users = invalid_users | set(
             user_predictions[user_predictions["predicted_class"] == "noise"].index
         )
@@ -311,10 +317,10 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
         name_function=lambda i: f"user.consolidated_groups{f'_{i}' if i != 0 else ''}.parquet",
         engine="pyarrow",
         schema=USERS_DTYPES,
-        use_dictionary=False
+        use_dictionary=False,
     )
 
-    return users["user.id"].values
+    return users.compute()["user.id"].values
 
 
 def identify_network_lcc(
@@ -328,7 +334,7 @@ def identify_network_lcc(
     edges_file = processed_path / f"user.{network_type}_edges.all.parquet"
 
     edges = (
-        dd.read_parquet(edges_file)
+        dd.read_parquet(edges_file, engine="pyarrow")
         .pipe(lambda x: x[x["user.id"].isin(user_ids)])
         .pipe(lambda x: x[x["frequency"] >= min_freq])
     )
@@ -343,7 +349,7 @@ def identify_network_lcc(
 
     edges["source"] = edges["user.id"].map(id_to_node)
     edges["target"] = edges[target_column].map(id_to_node)
-    network = Network.from_edgelist(edges, weight="frequency")
+    network = Network.from_edgelist(edges.compute(), weight="frequency")
     graph = network.network
 
     components, component_histogram = graph_tool.topology.label_components(
@@ -357,8 +363,12 @@ def identify_network_lcc(
     node_components_path = (
         target_path / f"network.{network_type}_filtered_node_components.parquet"
     )
-    node_components.reset_index().to_json(
-        node_components_path, compression="gzip", orient="records", lines=True
+
+    node_components_table = pa.Table.from_pandas(node_components.reset_index())
+    pq.write_table(
+        node_components_table,
+        node_components_path,
+        use_dictionary=False,
     )
 
 
