@@ -10,6 +10,8 @@ import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import toml
 from dotenv import find_dotenv, load_dotenv
 import re
@@ -22,10 +24,14 @@ from gensim.utils import deaccent
 @click.command()
 @click.option("--experiment", type=str, default="full")
 @click.option("--group", type=str, default="relevance")
-def main(experiment, group):
+@click.option("--filetype", type=str, default="json")
+def main(experiment, group, filetype):
     """Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready to be analyzed (saved in ../processed).
+    cleaned data ready to be analyzed (saved in ../processed/{filetype})
     """
+
+    if filetype not in ["json", "parquet"]:
+        raise KeyError(filetype)
 
     experiment_name = experiment
     group_key = group
@@ -39,7 +45,7 @@ def main(experiment, group):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / filetype
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -81,18 +87,19 @@ def main(experiment, group):
 
     data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed"
+        / filetype / experimental_settings.get("key")
     )
 
     with open(Path(config["path"]["config"]) / "groups" / f"{group_key}.toml") as f:
         group_config = toml.load(f)
 
-    user_ids = pd.read_json(
-        processed_path / "user.elem_ids.json.gz", lines=True
-    ).set_index("user.id")
+    user_ids = dd.read_parquet(
+        processed_path / "user.elem_ids.parquet"
+    ).set_index("user.id").compute()
     logging.info(f"Total users: #{len(user_ids)}")
 
-    relevance_path = processed_path / "relevance.classification.predictions.json.gz"
+    relevance_path = processed_path / "relevance.classification.predictions.parquet"
 
     xgb_parameters = experiment_config[group_key]["xgb"]
     pipeline_config = experiment_config[group_key]["pipeline"]
@@ -104,15 +111,15 @@ def main(experiment, group):
         allow_id_class = experiment_config[group_key]["allow_list"].get(
             "assigned_class", 'undisclosed'
         )
-        logging.info(f'Whitelisted accounts: #{len(allow_list_ids)}. Using class {allow_id_class}')
+        logging.info(
+            f'Whitelisted accounts: #{len(allow_list_ids)}. Using class {allow_id_class}')
     else:
         allow_list_ids = None
         allow_id_class = None
         logging.info(f'No whitelisted accounts')
 
-
     if group_key != "relevance" and relevance_path.exists():
-        user_groups = pd.read_json(relevance_path, lines=True).set_index("user.id")
+        user_groups = dd.read_parquet(relevance_path).set_index("user.id")
         # TODO: make undisclosed optional
         all_ids = user_groups.index
         valid_users = user_groups[
@@ -134,10 +141,11 @@ def main(experiment, group):
     # if there are location patterns, tream them specially:
     user_data = None
 
-    load_user_data = lambda: (pd.read_json(processed_path / "user.unique.json.gz", lines=True)
-        .set_index("user.id")
-        .loc[user_ids.index]
-    )
+    def load_user_data(): return (dd.read_parquet(processed_path / "user.unique.parquet")
+                                  .set_index("user.id")
+                                  .loc[user_ids.index]
+                                  .compute()
+                                  )
 
     for key, meta in group_config.items():
         group_re = None
@@ -152,7 +160,8 @@ def main(experiment, group):
 
         if user_data is None:
             user_data = load_user_data()
-            user_data["user.location"] = user_data["user.location"].fillna("").map(deaccent)
+            user_data["user.location"] = user_data["user.location"].fillna(
+                "").map(deaccent)
 
         group_ids = user_data[
             user_data["user.location"].str.contains(group_re)
@@ -162,7 +171,7 @@ def main(experiment, group):
             # use these as account ids that cannot be modified (let's trust users)
             if not 'account_ids' in meta:
                 meta['account_ids'] = dict()
-            
+
             if not 'known_users' in meta:
                 meta['account_ids']['known_users'] = list(group_ids)
             else:
@@ -182,23 +191,26 @@ def main(experiment, group):
         def pick_age(values):
             if not values:
                 return 0
-            #print(values)
+            # print(values)
             for x in values[0]:
                 if not x or int(x) < min_age:
                     continue
                 return int(x)
             return 0
 
-        age_patterns = re.compile('(?:^|level|lvl|nivel)\s?([0-6][0-9])\.|(?:^|\W)([0-9]{2})\s?(?:años|veranos|otoños|inviernos|primaveras|years old|vueltas|lunas|soles)', flags=re.IGNORECASE|re.UNICODE)
-        
-        found_age = user_data["user.description"].fillna("").str.findall(age_patterns).map(pick_age)
+        age_patterns = re.compile(
+            '(?:^|level|lvl|nivel)\s?([0-6][0-9])\.|(?:^|\W)([0-9]{2})\s?(?:años|veranos|otoños|inviernos|primaveras|years old|vueltas|lunas|soles)', flags=re.IGNORECASE | re.UNICODE)
+
+        found_age = user_data["user.description"].fillna(
+            "").str.findall(age_patterns).map(pick_age)
         found_age = found_age[found_age.between(min_age, max_age)].copy()
         print('found_age', found_age.shape)
 
         print(found_age.sample(10))
         print(found_age.value_counts())
-        
-        labeled_age = pd.cut(found_age, bins=[0, 17, 29, 39, 49, max_age + 1], labels=group_config.keys())
+
+        labeled_age = pd.cut(
+            found_age, bins=[0, 17, 29, 39, 49, max_age + 1], labels=group_config.keys())
 
         print(labeled_age.value_counts())
 

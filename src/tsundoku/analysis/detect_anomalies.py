@@ -58,10 +58,10 @@ def main(experiment):
     )
 
     user_data = pd.read_json(
-        processed_path / "consolidated/user.consolidated_groups.json.gz", lines=True
+        processed_path / "consolidated/user.consolidated_groups.parquet", lines=True
     )
     user_daily_stats = pd.read_json(
-        processed_path / "consolidated/user.daily_stats.json.gz", lines=True
+        processed_path / "consolidated/user.daily_stats.parquet", lines=True
     )
 
     user_content_volume = user_daily_stats.groupby("user.id")[
@@ -97,7 +97,7 @@ def main(experiment):
     for network in ["retweet", "quote", "reply"]:
         network_components = pd.read_json(
             processed_path
-            / f"consolidated/network.{network}_filtered_node_components.json.gz",
+            / f"consolidated/network.{network}_filtered_node_components.parquet",
             lines=True,
         ).set_index("index")
 
@@ -139,9 +139,10 @@ def main(experiment):
 
     if "account_age_reference" in experimental_settings["anomalies"]:
         user_features['__ref_age__'] = datetime.datetime(
-                *experimental_settings["anomalies"]["account_age_reference"]
-            )
-        acc_age = pd.to_datetime(user_features['__ref_age__']) - pd.to_datetime(user_features["user.created_at"])
+            *experimental_settings["anomalies"]["account_age_reference"]
+        )
+        acc_age = pd.to_datetime(
+            user_features['__ref_age__']) - pd.to_datetime(user_features["user.created_at"])
         user_features["feature.account_age_days"] = acc_age.dt.days
         del user_features['__ref_age__']
 

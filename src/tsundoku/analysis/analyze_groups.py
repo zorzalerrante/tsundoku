@@ -15,6 +15,7 @@ import graph_tool
 import graph_tool.topology
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 import toml
 from aves.models.network import Network
 from scipy.sparse import dok_matrix, save_npz
@@ -22,6 +23,7 @@ from scipy.sparse import dok_matrix, save_npz
 from tsundoku.features.helpers import build_elem_to_id, filter_vocabulary
 from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.features.tweets import TWEET_DTYPES
+from tsundoku.analysis.users_models import USERS_DTYPES
 from tsundoku.features.urls import DISCARD_URLS, get_domain
 from tsundoku.helpers import read_toml, write_json
 
@@ -46,7 +48,7 @@ def main(experiment, group, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -86,10 +88,11 @@ def main(experiment, group, overwrite):
 
     # let's go
 
-    data_base = Path(config["path"]["data"]) / "interim"
+    data_base = Path(config["path"]["data"]) / "interim" / "parquet"
     data_paths = [data_base / key for key in key_folders]
     processed_path = (
-        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed"
+        / "parquet" / experimental_settings.get("key")
     )
     target_path = processed_path / "consolidated"
 
@@ -100,45 +103,45 @@ def main(experiment, group, overwrite):
     user_ids = consolidate_users(
         processed_path, target_path, group, overwrite=overwrite
     )
-    aggregate_daily_stats(
-        data_paths, processed_path, user_ids, target_path, group, overwrite=overwrite
-    )
-    sum_word_frequencies_per_group(
-        data_paths, processed_path, target_path, group, overwrite=overwrite
-    )
-    identify_network_lcc(
-        processed_path,
-        target_path,
-        user_ids,
-        "rt.user.id",
-        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-        network_type="retweet",
-    )
+    # aggregate_daily_stats(
+    #     data_paths, processed_path, user_ids, target_path, group, overwrite=overwrite
+    # )
+    # sum_word_frequencies_per_group(
+    #     data_paths, processed_path, target_path, group, overwrite=overwrite
+    # )
+    # identify_network_lcc(
+    #     processed_path,
+    #     target_path,
+    #     user_ids,
+    #     "rt.user.id",
+    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+    #     network_type="retweet",
+    # )
 
-    identify_network_lcc(
-        processed_path,
-        target_path,
-        user_ids,
-        "quote.user.id",
-        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-        network_type="quote",
-    )
+    # identify_network_lcc(
+    #     processed_path,
+    #     target_path,
+    #     user_ids,
+    #     "quote.user.id",
+    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+    #     network_type="quote",
+    # )
 
-    identify_network_lcc(
-        processed_path,
-        target_path,
-        user_ids,
-        "in_reply_to_user_id",
-        min_freq=experiment_config["thresholds"].get("edge_weight", 1),
-        network_type="reply",
-    )
+    # identify_network_lcc(
+    #     processed_path,
+    #     target_path,
+    #     user_ids,
+    #     "in_reply_to_user_id",
+    #     min_freq=experiment_config["thresholds"].get("edge_weight", 1),
+    #     network_type="reply",
+    # )
 
 
 def read_daily_stats(source_folder, user_ids):
     date = os.path.basename(source_folder)
 
     return (
-        pd.read_json(source_folder / "user_daily_stats.json.gz", lines=True)
+        dd.read_parquet(source_folder / "user_daily_stats.parquet")
         .pipe(lambda x: x[x["user.id"].isin(user_ids)])
         .assign(date=date)
     )
@@ -163,17 +166,16 @@ def aggregate_daily_stats(
     tasks = []
 
     for folder in data_paths:
-        if (folder / "user_daily_stats.json.gz").exists():
-            tasks.append(dask.delayed(read_daily_stats)(folder, user_ids))
+        if (folder / "user_daily_stats.parquet").exists():
+            tasks.append(dask.delayed(read_daily_stats)(folder, user_ids).compute())
         else:
             logging.info(f"Daily Stats: {folder} does not exist")
 
     results = pd.concat(dask.compute(tasks)[0]).sort_values("date")
 
     user_groups = (
-        pd.read_json(
-            processed_path / f"{aggregation_group}.classification.predictions.json.gz",
-            lines=True,
+        dd.read_parquet(
+            processed_path / f"{aggregation_group}.classification.predictions.parquet"
         )
         .pipe(lambda x: x[x["predicted_class"] != "noise"])
         .set_index("user.id")["predicted_class"]
@@ -193,9 +195,8 @@ def count_group_vocabulary(source_folder, user_stances, aggregation_group):
     date = os.path.basename(source_folder)
 
     user_vocab = (
-        pd.read_json(source_folder / "tweet_vocabulary.json.gz", lines=True)
+        dd.read_parquet(source_folder / "tweet_vocabulary.parquet")
         .join(user_stances, on="user.id")
-        # .pipe(lambda x: x[x['token'].isin(allowed_vocabulary)])
         .groupby([f"predicted.{aggregation_group}", "token"], sort=False)
         .agg(n_users=("user.id", "count"), frequency=("frequency", "sum"))
         .assign(date=date)
@@ -208,7 +209,7 @@ def count_group_vocabulary(source_folder, user_stances, aggregation_group):
 def sum_word_frequencies_per_group(
     data_paths, processed_path, target_path, aggregation_group, overwrite=False
 ):
-    frequencies_target_path = target_path / "tweet.word_frequencies.json.gz"
+    frequencies_target_path = target_path / "tweet.word_frequencies.parquet"
 
     if not overwrite and frequencies_target_path.exists():
         logging.info(
@@ -217,9 +218,8 @@ def sum_word_frequencies_per_group(
         return
 
     user_groups = (
-        pd.read_json(
-            processed_path / f"{aggregation_group}.classification.predictions.json.gz",
-            lines=True,
+        dd.read_parquet(
+            processed_path / f"{aggregation_group}.classification.predictions.parquet"
         )
         .pipe(lambda x: x[x["predicted_class"] != "noise"])
         .set_index("user.id")["predicted_class"]
@@ -229,7 +229,7 @@ def sum_word_frequencies_per_group(
     tasks = []
 
     for folder in data_paths:
-        if (folder / "tweet_vocabulary.json.gz").exists():
+        if (folder / "tweet_vocabulary.parquet").exists():
             tasks.append(
                 dask.delayed(count_group_vocabulary)(
                     folder, user_groups, aggregation_group
@@ -250,23 +250,22 @@ def sum_word_frequencies_per_group(
 
 
 def consolidate_users(processed_path, target_path, aggregation_group, overwrite=False):
-    users_target_path = target_path / "user.consolidated_groups.json.gz"
+    users_target_path = target_path / "user.consolidated_groups.parquet"
 
     if not overwrite and users_target_path.exists():
         logging.info(
             f"Consolidated users file already exists. Delete if you want to build it again -> {users_target_path}"
         )
-        return pd.read_json(users_target_path, lines=True)["user.id"].values
+        return dd.read_parquet(users_target_path, lines=True)["user.id"].values
 
-    user_groups = pd.read_json(
-        processed_path / f"{aggregation_group}.classification.predictions.json.gz",
-        lines=True,
+    user_groups = dd.read_parquet(
+        processed_path / f"{aggregation_group}.classification.predictions.parquet"
     ).set_index("user.id")
 
     invalid_users = set(user_groups[user_groups["predicted_class"] == "noise"].index)
 
     users = (
-        pd.read_json(processed_path / "user.unique.json.gz", lines=True)
+        dd.read_parquet(processed_path / "user.unique.parquet", schema=USERS_DTYPES)
         .reset_index()
         .rename(columns={"index": "row_id"})
         .pipe(lambda x: x[~x["user.id"].isin(invalid_users)])
@@ -279,7 +278,7 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
 
     for group_name in ["location", "person"]:
         predictions_path = (
-            processed_path / f"{group_name}.classification.predictions.json.gz"
+            processed_path / f"{group_name}.classification.predictions.parquet"
         )
 
         if not predictions_path.exists():
@@ -288,7 +287,7 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
             )
             continue
 
-        user_predictions = pd.read_json(predictions_path, lines=True).set_index(
+        user_predictions = dd.read_parquet(predictions_path).set_index(
             "user.id"
         )
         invalid_users = invalid_users | set(
@@ -306,7 +305,14 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
 
     logging.info(f"users: #valid: {len(users)}, #invalid {len(invalid_users)}")
     logging.info(f"user consolidation with groups -> {users_target_path}")
-    users.to_json(users_target_path, compression="gzip", orient="records", lines=True)
+
+    users.to_parquet(
+        target_path,
+        name_function=lambda i: f"user.consolidated_groups{f'_{i}' if i != 0 else ''}.parquet",
+        engine="pyarrow",
+        schema=USERS_DTYPES,
+        use_dictionary=False
+    )
 
     return users["user.id"].values
 
@@ -319,10 +325,10 @@ def identify_network_lcc(
     min_freq=1,
     network_type="retweet",
 ):
-    edges_file = processed_path / f"user.{network_type}_edges.all.json.gz"
+    edges_file = processed_path / f"user.{network_type}_edges.all.parquet"
 
     edges = (
-        pd.read_json(edges_file, lines=True)
+        dd.read_parquet(edges_file)
         .pipe(lambda x: x[x["user.id"].isin(user_ids)])
         .pipe(lambda x: x[x["frequency"] >= min_freq])
     )
@@ -349,7 +355,7 @@ def identify_network_lcc(
         components.a.tolist(), index=list(id_to_node.keys()), name="network_component"
     )
     node_components_path = (
-        target_path / f"network.{network_type}_filtered_node_components.json.gz"
+        target_path / f"network.{network_type}_filtered_node_components.parquet"
     )
     node_components.reset_index().to_json(
         node_components_path, compression="gzip", orient="records", lines=True
