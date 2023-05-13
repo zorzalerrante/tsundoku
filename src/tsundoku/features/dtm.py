@@ -28,7 +28,7 @@ def build_vocabulary(vocab_df, token_column, to_lower=True, chunksize=10000):
 
 
 def tokens_to_document_term_matrix(
-    df, id_column, token_column, vocabulary, id_to_row=None):
+        df, id_column, token_column, vocabulary, id_to_row=None):
     if type(vocabulary) == pd.core.series.Series:
         vocab_name = vocabulary.name
         token_to_column = (

@@ -1,6 +1,8 @@
 import joblib
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from scipy.sparse import csr_matrix, hstack, load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfTransformer
 
@@ -8,7 +10,7 @@ from tsundoku.features.helpers import to_array
 from tsundoku.features.text import score_frequency_table
 from tsundoku.helpers import write_json
 from tsundoku.models.classifier import PartiallyLabeledXGB, cross_validate
-from tsundoku.models.helpers import load_matrix_and_features
+from tsundoku.models.helpers import load_matrix_and_features, load_matrix_and_features_from_parquet
 
 
 def search_tokens(vocabulary, matrix, model_config, token_type, skip_numeric_tokens=False):
@@ -46,7 +48,7 @@ def search_tokens(vocabulary, matrix, model_config, token_type, skip_numeric_tok
         else:
             group_user_ids[group] = np.where(group_flag > 0)[0]
 
-        to_remove_feature_ids.extend(group_tokens["token_id"].values)
+        to_remove_feature_ids.extend(np.asarray(group_tokens["token_id"].values))
 
     feature_ids = vocabulary[~vocabulary["token_id"].isin(to_remove_feature_ids)]
     feature_matrix = matrix[:, feature_ids["token_id"].values]
@@ -76,7 +78,11 @@ def process_matrix(
     tf_idf=False,
     skip_numeric_tokens=False,
 ):
-    raw_matrix, raw_features = load_matrix_and_features(
+    # raw_matrix, raw_features = load_matrix_and_features(
+    #     path, matrix_key, names_key, name, index=index, token_id=token_id
+    # )
+
+    raw_matrix, raw_features = load_matrix_and_features_from_parquet(
         path, matrix_key, names_key, name, index=index, token_id=token_id
     )
 
@@ -91,7 +97,7 @@ def process_matrix(
         matrix = TfidfTransformer(norm="l1").fit_transform(matrix)
 
     labels = update_labels(labels.copy(), user_to_row_df, labeled_user_ids)
-    return labels, matrix, features, labeled_user_ids
+    return labels, matrix, features.compute(), labeled_user_ids
 
 
 def prepare_features(
@@ -181,7 +187,7 @@ def prepare_features(
         labels,
         user_ids,
         "network.retweet",
-        "network.retweet.target_ids.json.gz",
+        "network.retweet.target_ids.parquet",
         "rt_target",
         index="index",
         token_id="node_id",
@@ -193,7 +199,7 @@ def prepare_features(
         labels,
         user_ids,
         "network.reply",
-        "network.reply.target_ids.json.gz",
+        "network.reply.target_ids.parquet",
         "reply_target",
         index="index",
         token_id="node_id",
@@ -205,7 +211,7 @@ def prepare_features(
         labels,
         user_ids,
         "network.quote",
-        "network.quote.target_ids.json.gz",
+        "network.quote.target_ids.parquet",
         "quote_target",
         index="index",
         token_id="node_id",
@@ -344,7 +350,7 @@ def evaluate(
         eval_fraction=training_eval_fraction,
     )
     write_json(
-        outputs, path / f"{elem_type}.classification_model.cross_validation.json.gz"
+        outputs, path / f"{elem_type}.classification_model.cross_validation.parquet"
     )
     return outputs
 
@@ -443,12 +449,12 @@ def classifier_pipeline(
     group_vectors = {}
 
     for idx, group in predictions.groupby("predicted_class"):
-        m_idx = group.index.values  # .astype(np.int32)
+        m_idx = group.index.values.astype(np.int32)
         print(idx, m_idx.shape)
         group_vectors[idx] = X[m_idx].tocsc()[:, c_idx].sum(axis=0)
 
     group_vectors = pd.DataFrame(
-        np.vstack(group_vectors.values()),
+        np.vstack(list(group_vectors.values())),
         index=group_vectors.keys(),
         columns=list(feature_names_all["label"].values),
     )
@@ -461,18 +467,18 @@ def classifier_pipeline(
 def save_classifier(elem_type, path, X, clf, predictions, feature_names_all, top_terms):
     joblib.dump(clf, path / f"{elem_type}.classification_model.joblib.gz")
     save_npz(path / f"{elem_type}.classification.matrix.npz", X)
-    feature_names_all.reset_index().to_json(
-        path / f"{elem_type}.classification.features.json.gz",
-        orient="records",
-        lines=True,
-    )
-    predictions.reset_index().to_json(
-        path / f"{elem_type}.classification.predictions.json.gz",
-        orient="records",
-        lines=True,
-    )
-    top_terms.reset_index().to_json(
-        path / f"{elem_type}.classification.term_associations.json.gz",
-        orient="records",
-        lines=True,
-    )
+
+    feature_names_all["token"] = feature_names_all["token"].astype(str)
+
+    pq.write_table(
+        pa.Table.from_pandas(feature_names_all.reset_index()),
+        path / f"{elem_type}.classification.features.parquet",
+        use_dictionary=False)
+    pq.write_table(
+        pa.Table.from_pandas(predictions.reset_index()),
+        path / f"{elem_type}.classification.predictions.parquet",
+        use_dictionary=False)
+    pq.write_table(
+        pa.Table.from_pandas(top_terms.reset_index()),
+        path / f"{elem_type}.classification.term_associations.parquet",
+        use_dictionary=False)

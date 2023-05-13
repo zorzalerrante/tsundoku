@@ -35,7 +35,8 @@ def main(experiment):
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
-    config = read_toml(Path(os.environ['TSUNDOKU_PROJECT_PATH']) / "config.toml")["project"]
+    config = read_toml(
+        Path(os.environ['TSUNDOKU_PROJECT_PATH']) / "config.toml")["project"]
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
@@ -88,18 +89,18 @@ def main(experiment):
     #    group_config = toml.load(f)
 
     users = pd.read_json(
-        processed_path / "consolidated" / "user.consolidated_groups.json.gz", lines=True
+        processed_path / "consolidated" / "user.consolidated_groups.parquet", lines=True
     )
     users.head()
 
     docterm_matrix = load_npz(processed_path / "user.tweets.matrix.npz")
 
     vocabulary = pd.read_json(
-        processed_path / "user.tweet_vocabulary.relevant.json.gz", lines=True
+        processed_path / "user.tweet_vocabulary.relevant.parquet", lines=True
     )
 
     frequencies = pd.read_json(
-        processed_path / "consolidated" / "tweet.word_frequencies.json.gz", lines=True
+        processed_path / "consolidated" / "tweet.word_frequencies.parquet", lines=True
     )
 
     frequent_vocabulary = vocabulary.join(
@@ -120,7 +121,8 @@ def main(experiment):
     print(frequent_vocabulary.head(15))
 
     filtered_users = users[
-        users["user.dataset_tweets"].between(experimental_settings["topic_modeling"].get("min_tweets", 1), users['user.dataset_tweets'].quantile(experimental_settings["topic_modeling"].get("max_tweets_quantile", 1.0)))
+        users["user.dataset_tweets"].between(experimental_settings["topic_modeling"].get(
+            "min_tweets", 1), users['user.dataset_tweets'].quantile(experimental_settings["topic_modeling"].get("max_tweets_quantile", 1.0)))
     ]
 
     filtered_docterm_matrix = docterm_matrix[filtered_users["row_id"].values, :][
@@ -151,14 +153,14 @@ def main(experiment):
     ).assign(row_id=np.arange(len(frequent_vocabulary))).drop(
         ["frequency", "n_users"], axis=1
     ).to_json(
-        processed_path / "consolidated" / "user.topic_model.vocabulary.json.gz",
+        processed_path / "consolidated" / "user.topic_model.vocabulary.parquet",
         compression="gzip",
         orient="records",
         lines=True,
     )
 
     with gzip.open(
-        processed_path / "consolidated" / "user.topic_model.doc_topics.json.gz", "wt"
+        processed_path / "consolidated" / "user.topic_model.doc_topics.parquet", "wt"
     ) as f:
         for i, (doc, uid) in enumerate(
             zip(

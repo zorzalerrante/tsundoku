@@ -59,11 +59,11 @@ def main(experiment):
     )
 
     users = pd.read_json(
-        processed_path / "consolidated" / "user.consolidated_groups.json.gz", lines=True
+        processed_path / "consolidated" / "user.consolidated_groups.parquet", lines=True
     )
 
     rts = pd.read_json(
-        processed_path / "user.retweet_edges.all.json.gz", lines=True
+        processed_path / "user.retweet_edges.all.parquet", lines=True
     ).pipe(
         lambda x: x[
             x["user.id"].isin(users["user.id"]) & x["rt.user.id"].isin(users["user.id"])
