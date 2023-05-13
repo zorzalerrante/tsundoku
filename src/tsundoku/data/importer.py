@@ -8,8 +8,6 @@ from pathlib import Path
 
 import ahocorasick
 import dask
-import ftfy
-import numpy as np
 import pandas as pd
 import pytz
 import toml
@@ -85,16 +83,8 @@ class TweetImporter(object):
 
         return candidates
 
-    def read_tweet_dataframe(self, filename, encoding="utf-8"):
-        df = pd.read_json(filename, encoding=encoding, lines=True)
-
-        if not df.empty:
-            return self.filter_dataframe(df)
-
-        return df
-
-    def read_tweet_arrow_dataframe(self, filename):
-        adf = pd.read_parquet(filename, engine='pyarrow', use_nullable_dtypes=True)
+    def read_tweet_dataframe(self, filename):
+        adf = pd.read_parquet(filename, engine="pyarrow", use_nullable_dtypes=True)
 
         if len(adf.columns) != 0:
             return self.filter_dataframe(adf)
@@ -225,7 +215,9 @@ class TweetImporter(object):
     def data_path(self):
         return Path(self.config["path"].get("data"))
 
-    def import_date(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
+    def parse_date_data_to_parquet(
+        self, date, pattern, source_path, target_path, periods=24 * 6, freq="10t"
+    ):
         date_str = date
         date = pd.to_datetime(date)
 
@@ -259,107 +251,23 @@ class TweetImporter(object):
 
         self.logger.info(f"#files to import: {len(task_files)}")
 
-        json_path = self.data_path() / "raw" / "json" / date_str
+        self.import_parquet_files(task_files, target_path)
 
-        self.import_files(task_files, json_path, file_prefix='tweets.partition')
-
-    def import_files(self, file_names, target_path, file_prefix=None):
+    def import_parquet_files(self, file_names, target_path):
         if not target_path.exists():
             target_path.mkdir(parents=True)
             self.logger.info("{} directory created".format(target_path))
-        else:
-            self.logger.info("{} exists".format(target_path))
+        # else:
+        # self.logger.info("{} exists".format(target_path))
 
         tasks = [
-            dask.delayed(self._read_file)(i, f, target_path, file_prefix=file_prefix)
-            for i, f in enumerate(file_names)
-        ]
-        read_tweets = sum(dask.compute(*tasks))
-        self.logger.info(f"done! imported {read_tweets} tweets")
-
-    def _read_file(self, i, filename, target_path, file_prefix=None):
-        try:
-            df = self.read_tweet_dataframe(filename)
-        except zlib.error:
-            self.logger.error(f"(#{i}) corrupted file: {filename}")
-            return 0
-
-        if not "text" in df or df.empty:
-            self.logger.error(f"(#{i}) empty file: {filename}")
-            return 0
-
-        if file_prefix is not None:
-            target_file = target_path / f"{file_prefix}.{i}.json.gz"
-        else:
-            target_file = target_path / f"{Path(filename).stem}.{i}.json.gz"
-
-        df["tweet.tokens"] = df["text"].map(self.tokenize)
-        df["user.description_tokens"] = df["user.description"].map(self.tokenize)
-        df["user.name_tokens"] = df["user.name"].map(self.tokenize)
-
-        self.logger.info(f"(#{i}) read {len(df)} tweets from {filename}")
-
-        df.to_json(target_file,
-                   orient="records",
-                   force_ascii=False,
-                   lines=True,
-                   compression="gzip")
-        return len(df)
-
-    def parse_date_to_arrow(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
-        date_str = date
-        date = pd.to_datetime(date)
-
-        if type(source_path) == str:
-            source_path = Path(source_path)
-        elif not isinstance(source_path, Path):
-            raise ValueError(
-                f"source_path is not a valid object (Path or str needed, got {type(source_path)})"
-            )
-
-        if not source_path.exists():
-            raise ValueError(f"source_path ({source_path}) is not a valid path")
-
-        self.logger.info(f"Source folder: {source_path}")
-
-        if not source_path.exists():
-            raise IOError(f"{source_path} does not exist")
-
-        data_date = self.timezone.localize(date).astimezone(pytz.utc)
-        self.logger.info(f"UTC start date: {data_date}")
-
-        task_files = []
-
-        for date in pd.date_range(data_date, periods=periods, freq=freq):
-            file_path = source_path / pattern.format(date.strftime("%Y%m%d%H%M"))
-
-            if not file_path.exists():
-                self.logger.info(f"{file_path} does not exist")
-            else:
-                task_files.append(file_path)
-
-        self.logger.info(f"#files to import: {len(task_files)}")
-
-        parquet_path = source_path / "parquet"
-
-        self.import_files_to_arrow(task_files, parquet_path)
-
-    def import_files_to_arrow(self, file_names, target_path):
-        if not target_path.exists():
-            target_path.mkdir(parents=True)
-            self.logger.info("{} directory created".format(target_path))
-        else:
-            self.logger.info("{} exists".format(target_path))
-
-        tasks = [
-            dask.delayed(self._parse_files_to_arrow)(
-                i, f, target_path)
+            dask.delayed(self._parse_files_to_parquet)(i, f, target_path)
             for i, f in enumerate(file_names)
         ]
         read_tweets = sum(dask.compute(*tasks))
         self.logger.info(f"done! imported {read_tweets} tweets from {len(file_names)}")
 
-    def _parse_files_to_arrow(self, i, filename, target_path):
+    def _parse_files_to_parquet(self, i, filename, target_path):
         try:
             adf = pa_json.read_json(filename)
         except zlib.error:
@@ -370,10 +278,10 @@ class TweetImporter(object):
 
         pq.write_table(adf, target_file, use_dictionary=False)
 
-        # self.logger.info(f"(#{i}) imported")
+        # self.logger.info(f"(#{i}) parsed succesfully")
         return adf.num_rows
 
-    def import_date_from_arrow(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
+    def import_date(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
         date_str = date
         date = pd.to_datetime(date)
 
@@ -410,34 +318,34 @@ class TweetImporter(object):
 
         parquet_path = self.data_path() / "raw" / "parquet" / date_str
 
-        self.import_files_from_arrow(
-            task_files, parquet_path, file_prefix='tweets.partition')
+        self.import_files(task_files, parquet_path, file_prefix="tweets.partition")
 
-    def import_files_from_arrow(self, file_names, target_path, file_prefix=None):
+    def import_files(self, file_names, target_path, file_prefix=None):
         if not target_path.exists():
             target_path.mkdir(parents=True)
-            # self.logger.info("{} directory created".format(target_path))
-        # else:
-            # self.logger.info("{} exists".format(target_path))
+            self.logger.info("{} directory created".format(target_path))
+        else:
+            self.logger.info("{} exists".format(target_path))
 
         tasks = [
-            dask.delayed(self._read_arrow_file)(
-                i, f, target_path, file_prefix=file_prefix)
+            dask.delayed(self._read_parquet_file)(
+                i, f, target_path, file_prefix=file_prefix
+            )
             for i, f in enumerate(file_names)
         ]
         read_tweets = sum(dask.compute(*tasks))
         self.logger.info(f"done! imported {read_tweets} tweets")
 
-    def _read_arrow_file(self, i, filename, target_path, file_prefix=None):
+    def _read_parquet_file(self, i, filename, target_path, file_prefix=None):
         try:
-            adf = self.read_tweet_arrow_dataframe(filename)
+            adf = self.read_tweet_dataframe(filename)
         except zlib.error:
-            # self.logger.error(f"(#{i}) corrupted file: {filename}")
+            self.logger.error(f"(#{i}) corrupted file: {filename}")
             return 0
 
-        if not "text" in adf or adf.empty:
-            # self.logger.error(f"(#{i}) empty file: {filename}")
-            return 0
+        # if not "text" in adf or adf.empty:
+        #     self.logger.error(f"(#{i}) empty file: {filename}")
+        #     return 0
 
         if file_prefix is not None:
             target_file = target_path / f"{file_prefix}.{i}.parquet"
@@ -448,16 +356,13 @@ class TweetImporter(object):
         adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
         adf["user.name_tokens"] = adf["user.name"].map(self.tokenize)
         adf["user.created_at"] = adf["user.created_at"].map(
-            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y"))
+            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
+        )
         adf["created_at"] = adf["created_at"].map(
-            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y"))
+            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
+        )
 
         # self.logger.info(f"(#{i}) read {len(adf)} tweets from {filename}")
-        # adf.to_json(target_file,
-        #             orient="records",
-        #             force_ascii=False,
-        #             lines=True,
-        #             compression="gzip")
         table = pa.Table.from_pandas(adf)
         pq.write_table(table, target_file, use_dictionary=False)
 
