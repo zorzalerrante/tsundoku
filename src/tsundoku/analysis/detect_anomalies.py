@@ -37,7 +37,7 @@ def main(experiment):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -54,14 +54,26 @@ def main(experiment):
     logging.info(f"Experimental settings: {experimental_settings}")
 
     processed_path = (
-        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"])
+        / "processed"
+        / "parquet"
+        / experimental_settings.get("key")
     )
 
-    user_data = pd.read_json(
-        processed_path / "consolidated/user.consolidated_groups.parquet", lines=True
+    # user_data = pd.read_json(
+    #     processed_path / "consolidated/user.consolidated_groups.parquet", lines=True
+    # )
+    # user_daily_stats = pd.read_json(
+    #     processed_path / "consolidated/user.daily_stats.parquet", lines=True
+    # )
+
+    user_data = dd.read_parquet(
+        processed_path / "consolidated/user.consolidated_groups.parquet",
+        engine="pyarrow",
     )
-    user_daily_stats = pd.read_json(
-        processed_path / "consolidated/user.daily_stats.parquet", lines=True
+    user_daily_stats = dd.read_parquet(
+        processed_path / "consolidated/user.daily_stats.parquet",
+        engine="pyarrow",
     )
 
     user_content_volume = user_daily_stats.groupby("user.id")[
@@ -84,21 +96,34 @@ def main(experiment):
         user_data["user.friends_count"] + 1
     ) / np.log(user_data["user.followers_count"] + 1)
 
-    user_data["feature.n_digits_username"] = user_data["user.screen_name"].apply(
-        lambda x: sum(c.isdigit() for c in x)
+    user_data["feature.n_digits_username"] = (
+        user_data["user.screen_name"]
+        .astype(str)
+        .fillna("")
+        .apply(lambda x: sum(c.isdigit() for c in x), meta=("user.screen_name", "str"))
     )
 
-    user_data["feature.default_profile_image"] = user_data[
-        "user.default_profile_image"
-    ].astype(int)
+    # user_data["feature.default_profile_image"] = (
+    #     user_data["user.default_profile_image"].astype(int).fillna(0)
+    # )
 
-    user_features = user_data.join(user_transformed_volume, on="user.id")
+    print(user_data.columns)
+
+    # TO DO - ERROR:
+    # raise TypeError(f"Invalid value '{str(value)}' for dtype {self.dtype}")
+    # TypeError: Invalid value '' for dtype Float64
+    for col in user_data.columns:
+        if user_data[col].dtype == "Float64":
+            user_data[col].fillna(0)
+        elif user_data[col].dtype == object:
+            user_data[col].fillna("")
+
+    user_features = user_data.fillna("").join(user_transformed_volume, on="user.id")
 
     for network in ["retweet", "quote", "reply"]:
-        network_components = pd.read_json(
+        network_components = dd.read_parquet(
             processed_path
-            / f"consolidated/network.{network}_filtered_node_components.parquet",
-            lines=True,
+            / f"consolidated/network.{network}_filtered_node_components.parquet"
         ).set_index("index")
 
         component_count = network_components["network_component"].value_counts()
@@ -138,13 +163,14 @@ def main(experiment):
     )
 
     if "account_age_reference" in experimental_settings["anomalies"]:
-        user_features['__ref_age__'] = datetime.datetime(
+        user_features["__ref_age__"] = datetime.datetime(
             *experimental_settings["anomalies"]["account_age_reference"]
         )
-        acc_age = pd.to_datetime(
-            user_features['__ref_age__']) - pd.to_datetime(user_features["user.created_at"])
+        acc_age = pd.to_datetime(user_features["__ref_age__"]) - pd.to_datetime(
+            user_features["user.created_at"]
+        )
         user_features["feature.account_age_days"] = acc_age.dt.days
-        del user_features['__ref_age__']
+        del user_features["__ref_age__"]
 
         user_features["feature.global_daily_rythm"] = np.log(
             user_features["user.statuses_count"] + 1
@@ -163,7 +189,7 @@ def main(experiment):
             "feature.transformed_data.statuses_count",
             "feature.transformed_data.rts_count",
             "feature.transformed_data.quotes_count",
-            "feature.transformed_data.replies_count"
+            "feature.transformed_data.replies_count",
         ]:
             user_features[col] = user_features[col] / (
                 user_features["feature.active_days"]
