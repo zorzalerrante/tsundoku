@@ -1,25 +1,24 @@
-# -*- coding: utf-8 -*-
 import copy
 import logging
 import os
-import sys
-from glob import glob
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import click
 import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import toml
-from dotenv import find_dotenv, load_dotenv
-from scipy.sparse import dok_matrix, save_npz
 
-from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
-from tsundoku.features.tweets import TWEET_DTYPES
-from tsundoku.features.urls import DISCARD_URLS, get_domain
-from tsundoku.helpers import read_json, read_toml, write_json
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
+from dotenv import find_dotenv, load_dotenv
+
+# from scipy.sparse import dok_matrix, save_npz
+
+# from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
+# from tsundoku.utils.tweets import TWEET_DTYPES
+# from tsundoku.utils.urls import DISCARD_URLS, get_domain
+from tsundoku.utils.files import read_json, read_toml, write_json
 from tsundoku.models.pipeline import evaluate, prepare_features
 
 

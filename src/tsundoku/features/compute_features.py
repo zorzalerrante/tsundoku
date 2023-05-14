@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-import sys
-from glob import glob
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import click
 import dask
 import dask.dataframe as dd
-import numpy as np
 import pyarrow as pa
 import pandas as pd
 import pyarrow.parquet as pq
+
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-from tsundoku.features.tweets import TWEET_DTYPES, TWEET_DTYPES_ARROW
-from tsundoku.features.urls import DISCARD_URLS, get_domain
-from tsundoku.helpers import read_toml, write_json
+from tsundoku.utils.tweets import TWEET_DTYPES
+from tsundoku.utils.urls import DISCARD_URLS, get_domain
+from tsundoku.utils.files import read_toml, write_json
 
 
 @click.command()
@@ -68,21 +66,22 @@ def main(start_at, overwrite, filetype):
                 continue
 
         if filetype == "json":
-            target_files = glob(str(Path(tweet_path) / '*.json.gz'))
+            target_files = glob(str(Path(tweet_path) / "*.json.gz"))
         if filetype == "parquet":
-            target_files = glob(str(Path(tweet_path) / '*.parquet'))
+            target_files = glob(str(Path(tweet_path) / "*.parquet"))
 
         non_empty_files = list(filter(lambda x: os.stat(x).st_size > 10, target_files))
 
         if not non_empty_files:
-            logger.warning(f'{date} has no validfiles.')
+            logger.warning(f"{date} has no validfiles.")
             continue
 
         if filetype == "json":
             tweets = dd.read_json(
-                non_empty_files, meta=TWEET_DTYPES, dtype=TWEET_DTYPES)
+                non_empty_files, meta=TWEET_DTYPES, dtype=TWEET_DTYPES
+            )
         if filetype == "parquet":
-            tweets = dd.read_parquet(non_empty_files, schema=TWEET_DTYPES_ARROW)
+            tweets = dd.read_parquet(non_empty_files, schema=TWEET_DTYPES)
 
         if tweets.npartitions <= 0:
             logger.warning(f"{date} has no files")
@@ -90,18 +89,22 @@ def main(start_at, overwrite, filetype):
 
         if filetype == "json":
             logger.info(
-                f"{date} ({tweets.npartitions} partitions) -> computing user metrics with json files")
+                f"{date} ({tweets.npartitions} partitions) -> computing user metrics with json files"
+            )
             compute_user_metrics(tweets, target, overwrite)
             logger.info(
-                f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics with json files")
+                f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics with json files"
+            )
             compute_tweet_metrics(tweets, target, overwrite)
             logger.info(f"{date} -> done! :D")
         if filetype == "parquet":
             logger.info(
-                f"{date} ({tweets.npartitions} partitions) -> computing user metrics with parquet files")
+                f"{date} ({tweets.npartitions} partitions) -> computing user metrics with parquet files"
+            )
             compute_user_metrics_arrow(tweets, target, overwrite)
             logger.info(
-                f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics with parquet files")
+                f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics with parquet files"
+            )
             compute_tweet_metrics_arrow(tweets, target, overwrite)
             logger.info(f"{date} -> done! :D")
 
@@ -171,7 +174,6 @@ def compute_user_metrics(tweets, target_path, overwrite):
 
 
 def compute_tweet_metrics(tweets, target_path, overwrite):
-
     if overwrite or not (target_path / "tweets_per_user.json.gz").exists():
         (
             tweets.drop_duplicates("id")
@@ -456,8 +458,9 @@ def compute_user_metrics_arrow(tweets, target_path, overwrite):
         )
 
         users_table = pa.Table.from_pandas(users)
-        pq.write_table(users_table, target_path
-                       / "unique_users.parquet", use_dictionary=False)
+        pq.write_table(
+            users_table, target_path / "unique_users.parquet", use_dictionary=False
+        )
 
     if overwrite or not (target_path / "user_name_vocabulary.parquet").exists():
         if users is None:
@@ -476,8 +479,11 @@ def compute_user_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         user_name_vocabulary_table = pa.Table.from_pandas(users)
-        pq.write_table(user_name_vocabulary_table, target_path
-                       / "user_name_vocabulary.parquet", use_dictionary=False)
+        pq.write_table(
+            user_name_vocabulary_table,
+            target_path / "user_name_vocabulary.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "user_description_vocabulary.parquet").exists():
         if users is None:
@@ -496,23 +502,30 @@ def compute_user_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         user_description_vocabulary_table = pa.Table.from_pandas(users)
-        pq.write_table(user_description_vocabulary_table, target_path
-                       / "user_description_vocabulary.parquet", use_dictionary=False)
+        pq.write_table(
+            user_description_vocabulary_table,
+            target_path / "user_description_vocabulary.parquet",
+            use_dictionary=False,
+        )
 
 
 def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
-
     if overwrite or not (target_path / "tweets_per_user.parquet").exists():
-        tweets_per_user = (tweets.drop_duplicates("id")
-                           .groupby("user.id")
-                           .size()
-                           .compute()
-                           .reset_index())
+        tweets_per_user = (
+            tweets.drop_duplicates("id")
+            .groupby("user.id")
+            .size()
+            .compute()
+            .reset_index()
+        )
 
         tweets_per_user.columns = tweets_per_user.columns.astype(str)
         tweets_per_user_table = pa.Table.from_pandas(tweets_per_user)
-        pq.write_table(tweets_per_user_table, target_path
-                       / "tweets_per_user.parquet", use_dictionary=False)
+        pq.write_table(
+            tweets_per_user_table,
+            target_path / "tweets_per_user.parquet",
+            use_dictionary=False,
+        )
 
     tweet_vocabulary = None
 
@@ -530,8 +543,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
         )
 
         tweet_vocabulary_table = pa.Table.from_pandas(tweet_vocabulary)
-        pq.write_table(tweet_vocabulary_table, target_path
-                       / "tweet_vocabulary.parquet", use_dictionary=False)
+        pq.write_table(
+            tweet_vocabulary_table,
+            target_path / "tweet_vocabulary.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "tweet_token_frequency.parquet").exists():
         if tweet_vocabulary is None:
@@ -549,8 +565,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             )
         )
         tweet_token_frequency_table = pa.Table.from_pandas(tweet_vocabulary)
-        pq.write_table(tweet_token_frequency_table, target_path
-                       / "tweet_token_frequency.parquet", use_dictionary=False)
+        pq.write_table(
+            tweet_token_frequency_table,
+            target_path / "tweet_token_frequency.parquet",
+            use_dictionary=False,
+        )
 
         tweet_vocabulary = None
 
@@ -566,8 +585,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         retweet_counts_table = pa.Table.from_pandas(retweet_counts)
-        pq.write_table(retweet_counts_table, target_path
-                       / "retweet_counts.parquet", use_dictionary=False)
+        pq.write_table(
+            retweet_counts_table,
+            target_path / "retweet_counts.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "quote_counts.parquet").exists():
         quote_counts = (
@@ -581,8 +603,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         quote_counts_table = pa.Table.from_pandas(quote_counts)
-        pq.write_table(quote_counts_table, target_path
-                       / "quote_counts.parquet", use_dictionary=False)
+        pq.write_table(
+            quote_counts_table,
+            target_path / "quote_counts.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "reply_counts.parquet").exists():
         reply_counts = (
@@ -596,8 +621,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         reply_counts_table = pa.Table.from_pandas(reply_counts)
-        pq.write_table(reply_counts_table, target_path
-                       / "reply_counts.parquet", use_dictionary=False)
+        pq.write_table(
+            reply_counts_table,
+            target_path / "reply_counts.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "retweet_edgelist.parquet").exists():
         retweet_edgelist = (
@@ -611,8 +639,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         retweet_edgelist_table = pa.Table.from_pandas(retweet_edgelist)
-        pq.write_table(retweet_edgelist_table, target_path
-                       / "retweet_edgelist.parquet", use_dictionary=False)
+        pq.write_table(
+            retweet_edgelist_table,
+            target_path / "retweet_edgelist.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "quote_edgelist.parquet").exists():
         quote_edgelist = (
@@ -626,8 +657,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         quote_edgelist_table = pa.Table.from_pandas(quote_edgelist)
-        pq.write_table(quote_edgelist_table, target_path
-                       / "quote_edgelist.parquet", use_dictionary=False)
+        pq.write_table(
+            quote_edgelist_table,
+            target_path / "quote_edgelist.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "reply_edgelist.parquet").exists():
         reply_edgelist = (
@@ -641,8 +675,11 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         reply_edgelist_table = pa.Table.from_pandas(reply_edgelist)
-        pq.write_table(reply_edgelist_table, target_path
-                       / "reply_edgelist.parquet", use_dictionary=False)
+        pq.write_table(
+            reply_edgelist_table,
+            target_path / "reply_edgelist.parquet",
+            use_dictionary=False,
+        )
 
     if overwrite or not (target_path / "user_urls.parquet").exists():
         user_urls = (
@@ -660,8 +697,9 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         user_urls_table = pa.Table.from_pandas(user_urls)
-        pq.write_table(user_urls_table, target_path
-                       / "user_urls.parquet", use_dictionary=False)
+        pq.write_table(
+            user_urls_table, target_path / "user_urls.parquet", use_dictionary=False
+        )
 
     if overwrite or not (target_path / "daily_stats.parquet").exists():
         all_tweets = (
@@ -743,7 +781,10 @@ def compute_tweet_metrics_arrow(tweets, target_path, overwrite):
             .reset_index()
         )
         user_daily_stats.to_parquet(
-            target_path, name_function=lambda i: f"user_daily_stats{f'_{i}' if i != 0 else ''}.parquet", engine="pyarrow")
+            target_path,
+            name_function=lambda i: f"user_daily_stats{f'_{i}' if i != 0 else ''}.parquet",
+            engine="pyarrow",
+        )
 
 
 if __name__ == "__main__":

@@ -1,32 +1,29 @@
-# -*- coding: utf-8 -*-
-import copy
 import logging
-from dotenv import find_dotenv, load_dotenv
 import os
-import sys
-from glob import glob
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import click
 import dask
 import dask.dataframe as dd
 import graph_tool
 import graph_tool.topology
-import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import pyarrow as pa
 import toml
-from aves.models.network import Network
-from scipy.sparse import dok_matrix, save_npz
 
-from tsundoku.features.helpers import build_elem_to_id, filter_vocabulary
-from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
-from tsundoku.features.tweets import TWEET_DTYPES
-from tsundoku.analysis.users_models import USERS_DTYPES
-from tsundoku.features.urls import DISCARD_URLS, get_domain
-from tsundoku.helpers import read_toml, write_json
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
+from dotenv import find_dotenv, load_dotenv
+from aves.models.network import Network
+
+# from scipy.sparse import dok_matrix, save_npz
+
+# from tsundoku.utils.vocabulary import build_elem_to_id, filter_vocabulary
+# from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
+# from tsundoku.utils.tweets import TWEET_DTYPES
+# from tsundoku.utils.urls import DISCARD_URLS, get_domain
+from tsundoku.utils.users import USERS_DTYPES
+from tsundoku.utils.files import read_toml, write_json
 
 
 @click.command()

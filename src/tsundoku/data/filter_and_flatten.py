@@ -1,28 +1,23 @@
 # -*- coding: utf-8 -*-
 import click
 import logging
+import glob
+import rapidjson as json
+import os
+import os.path
+import gzip
+import zlib
+import dask
+
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
-from tsundoku.data.importer import TweetImporter
-import pandas as pd
-from tsundoku.features.tweets import flatten_tweet
-import dask
 from multiprocessing.pool import ThreadPool
 
 dask.config.set(pool=ThreadPool(2))
-import glob
-import rapidjson as json
-import os.path
-from pathlib import Path
-import gzip
-import zlib
-import os
-from tsundoku.data.iterator import iterate_tweets
-import os
+from tsundoku.utils.iterator import iterate_tweets
 
 
 @click.command()
-# @click.argument('output_filepath', type=click.Path())
 def main():
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
@@ -33,7 +28,7 @@ def main():
     files = sorted(glob.glob(f"{os.environ['INCOMING_PATH']}/*.gz"))
     target = Path(os.environ["TWEET_PATH"])
 
-    languages = list(os.environ.get('TSUNDOKU_LANGUAGES', 'es|und').split('|'))
+    languages = list(os.environ.get("TSUNDOKU_LANGUAGES", "es|und").split("|"))
     logger.info(f"accepted languages: {languages}")
     languages.append(None)
 
@@ -59,7 +54,7 @@ def main():
                         if not tweet.get("lang", None) in languages:
                             continue
 
-                        # print(tweet['lang'], tweet['text'])
+                        # print(tweet["lang"], tweet["text"])
                         # break
                         dst.write(f"{json.dumps(tweet, ensure_ascii=False)}\n")
                         written_tweets += 1

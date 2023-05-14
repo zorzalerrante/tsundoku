@@ -1,5 +1,3 @@
-from urllib.parse import urlparse
-
 import pandas as pd
 import scattertext
 from cytoolz import sliding_window
@@ -7,7 +5,8 @@ from emoji.unicode_codes import EMOJI_DATA
 from gensim.utils import deaccent as gensim_deaccent
 from nltk.tokenize.casual import casual_tokenize
 from aves.features.twokenize import tokenize as ark_twokenize
-from tsundoku.features.re import PUNCTUATION_RE, URL_RE
+
+from tsundoku.utils.re import PUNCTUATION_RE, URL_RE
 
 
 def score_frequency_table(gg_df, alpha_w=0.001, top_k=15):
@@ -40,7 +39,7 @@ def tokenize(
     lower=True,
     ngram_range=None,
     stopwords=None,
-    use_nltk=False
+    use_nltk=False,
 ):
     if deaccent:
         text = gensim_deaccent(text)
@@ -67,7 +66,6 @@ def tokenize(
 
     if ngram_range is not None:
         for i in range(*ngram_range):
-
             if len(tokens) < i:
                 continue
 

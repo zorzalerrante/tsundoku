@@ -1,14 +1,6 @@
-# -*- coding: utf-8 -*-
 import logging
 import gzip
 import rapidjson as json
-
-from dotenv import find_dotenv, load_dotenv
-import os
-from glob import glob
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import click
 import dask
 import dask.dataframe as dd
@@ -16,10 +8,16 @@ import numpy as np
 import pandas as pd
 import toml
 import gensim
+
+from dotenv import find_dotenv, load_dotenv
+import os
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from scipy.sparse import load_npz
 from cytoolz import keymap, valmap
 
-from tsundoku.helpers import read_toml
+from tsundoku.utils.files import read_toml
 
 
 @click.command()
@@ -35,8 +33,9 @@ def main(experiment):
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
-    config = read_toml(
-        Path(os.environ['TSUNDOKU_PROJECT_PATH']) / "config.toml")["project"]
+    config = read_toml(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")[
+        "project"
+    ]
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
@@ -121,8 +120,12 @@ def main(experiment):
     print(frequent_vocabulary.head(15))
 
     filtered_users = users[
-        users["user.dataset_tweets"].between(experimental_settings["topic_modeling"].get(
-            "min_tweets", 1), users['user.dataset_tweets'].quantile(experimental_settings["topic_modeling"].get("max_tweets_quantile", 1.0)))
+        users["user.dataset_tweets"].between(
+            experimental_settings["topic_modeling"].get("min_tweets", 1),
+            users["user.dataset_tweets"].quantile(
+                experimental_settings["topic_modeling"].get("max_tweets_quantile", 1.0)
+            ),
+        )
     ]
 
     filtered_docterm_matrix = docterm_matrix[filtered_users["row_id"].values, :][
