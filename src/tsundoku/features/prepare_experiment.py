@@ -1,17 +1,10 @@
-# -*- coding: utf-8 -*-
-from tsundoku.helpers import read_toml
-from tsundoku.features.urls import get_domain
-from tsundoku.features.dtm import build_vocabulary, tokens_to_document_term_matrix
-from tsundoku.features.helpers import filter_vocabulary
-from scipy.sparse import dok_matrix, save_npz
-from dotenv import find_dotenv, load_dotenv
-from aves.models.network import Network
 import toml
 import pandas as pd
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-import graph_tool.topology
+
+# import graph_tool.topology
 import graph_tool
 import dask.dataframe as dd
 import dask
@@ -19,12 +12,22 @@ import click
 import copy
 import logging
 import os
+import matplotlib
+
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from scipy.sparse import dok_matrix, save_npz
+from dotenv import find_dotenv, load_dotenv
+from aves.models.network import Network
 
-import matplotlib
-matplotlib.use('agg')
+
+from tsundoku.utils.files import read_toml
+from tsundoku.utils.urls import get_domain
+from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
+from tsundoku.utils.vocabulary import filter_vocabulary
+
+matplotlib.use("agg")
 
 
 @click.command()
@@ -85,7 +88,8 @@ def main(experiment, overwrite, filetype):
 
     if not key_folders:
         logging.info(
-            'There are no folders with experiment data. Check folder_start and folder_end settings.')
+            "There are no folders with experiment data. Check folder_start and folder_end settings."
+        )
         return -1
 
     logging.info(f"Key Folders: {key_folders}")
@@ -94,8 +98,10 @@ def main(experiment, overwrite, filetype):
 
     data_base = Path(config["path"]["data"]) / "interim" / filetype
     processed_path = (
-        Path(config["path"]["data"]) / "processed"
-        / filetype / experimental_settings.get("key")
+        Path(config["path"]["data"])
+        / "processed"
+        / filetype
+        / experimental_settings.get("key")
     )
 
     if not processed_path.exists():
@@ -122,11 +128,13 @@ def main(experiment, overwrite, filetype):
         try:
             if filetype == "json":
                 interaction_dd = dd_from_paths(
-                    [d / f"{int_name}_edgelist.json.gz" for d in data_paths])
+                    [d / f"{int_name}_edgelist.json.gz" for d in data_paths]
+                )
 
             elif filetype == "parquet":
                 interaction_dd = dd_from_parquet_paths(
-                    [d / f"{int_name}_edgelist.parquet" for d in data_paths])
+                    [d / f"{int_name}_edgelist.parquet" for d in data_paths]
+                )
         except:
             df = pd.DataFrame(columns=["user.id", int_column, "frequency"])
             interaction_dd = dd.from_pandas(df, npartitions=0)
@@ -148,7 +156,8 @@ def main(experiment, overwrite, filetype):
                 int_column,
                 int_name,
                 processed_path,
-                overwrite=overwrite,)
+                overwrite=overwrite,
+            )
 
     # users
     count_user_tweets_arrow(data_paths, processed_path, overwrite=overwrite)
@@ -203,7 +212,8 @@ def main(experiment, overwrite, filetype):
 
     # user-tweet matrix
     terms_dd = dd_from_parquet_paths(
-        [d / "tweet_vocabulary.parquet" for d in data_paths])
+        [d / "tweet_vocabulary.parquet" for d in data_paths]
+    )
     min_freq = experiment_config["thresholds"].get("tweet_tokens", 50)
     build_user_tweets_term_matrix_arrow(
         terms_dd,
@@ -369,14 +379,17 @@ def group_users_arrow(
     if discussion_only:
         logging.info(f"total #users before filtering by discussion: {len(users)}")
         nodes_in_largest = find_nodes_in_discussion_arrow(
-            processed_path, directed=directed)
+            processed_path, directed=directed
+        )
         users = users[users["user.id"].isin(nodes_in_largest)]
 
     logging.info(f"total #users: {len(users)}")
 
-    tweet_count = dd.read_parquet(
-        processed_path / "user.total_tweets.parquet"
-    ).set_index("user.id").compute()
+    tweet_count = (
+        dd.read_parquet(processed_path / "user.total_tweets.parquet")
+        .set_index("user.id")
+        .compute()
+    )
 
     users = users.join(tweet_count, on="user.id", how="inner").sort_values(
         "user.dataset_tweets", ascending=False
@@ -387,10 +400,7 @@ def group_users_arrow(
     pq.write_table(users_table, target_file, use_dictionary=False)
     logging.info(f"#{len(users)} users -> {target_file}")
 
-    users = (
-        users[["user.id"]]
-        .assign(row_id=lambda x: range(len(x)))
-    )
+    users = users[["user.id"]].assign(row_id=lambda x: range(len(x)))
 
     users_table = pa.Table.from_pandas(users)
     pq.write_table(users_table, elem_ids_target, use_dictionary=False)
@@ -515,16 +525,19 @@ def build_vocabulary_and_matrix_arrow(
             f"{elem_type}.{token_column} relevant vocabulary -> {relevant_vocabulary_target}"
         )
         relevant_vocabulary_table = pa.Table.from_pandas(
-            relevant_vocabulary.reset_index())
-        pq.write_table(relevant_vocabulary_table,
-                       relevant_vocabulary_target, use_dictionary=False)
+            relevant_vocabulary.reset_index()
+        )
+        pq.write_table(
+            relevant_vocabulary_table, relevant_vocabulary_target, use_dictionary=False
+        )
 
     if not overwrite and token_matrix_target.exists():
         logging.info(f"{elem_type}.{token_column} matrix exists! skipping.")
     else:
         if relevant_vocabulary is None:
-            relevant_vocabulary = dd.read_parquet(
-                relevant_vocabulary_target).set_index("token")
+            relevant_vocabulary = dd.read_parquet(relevant_vocabulary_target).set_index(
+                "token"
+            )
         token_to_id = relevant_vocabulary["token_id"].to_dict()
         token_matrices = dask_df.map_partitions(
             lambda df: tokens_to_document_term_matrix(
@@ -651,8 +664,9 @@ def build_user_tweets_term_matrix_arrow(
     else:
         full_vocabulary = term_frequencies.groupby("token")["frequency"].sum().compute()
         full_vocabulary_table = pa.Table.from_pandas(full_vocabulary.reset_index())
-        pq.write_table(full_vocabulary_table,
-                       full_vocabulary_target, use_dictionary=False)
+        pq.write_table(
+            full_vocabulary_table, full_vocabulary_target, use_dictionary=False
+        )
         logging.info(f"user.tweet_tokens vocabulary -> {full_vocabulary_target}")
 
         relevant_full_vocabulary = filter_vocabulary(
@@ -662,9 +676,13 @@ def build_user_tweets_term_matrix_arrow(
             remove_punctuation=True,
         )
         relevant_full_vocabulary_table = pa.Table.from_pandas(
-            relevant_full_vocabulary.reset_index())
-        pq.write_table(relevant_full_vocabulary_table,
-                       relevant_full_vocabulary_target, use_dictionary=False)
+            relevant_full_vocabulary.reset_index()
+        )
+        pq.write_table(
+            relevant_full_vocabulary_table,
+            relevant_full_vocabulary_target,
+            use_dictionary=False,
+        )
 
         logging.info(
             f"user.tweet_tokens relevant vocabulary -> {relevant_full_vocabulary_target}"
@@ -675,7 +693,8 @@ def build_user_tweets_term_matrix_arrow(
     else:
         if relevant_full_vocabulary is None:
             relevant_full_vocabulary = dd.read_parquet(
-                relevant_full_vocabulary_target).set_index("token")
+                relevant_full_vocabulary_target
+            ).set_index("token")
 
         # print(elem_to_id)
         user_tweet_frequency = (
@@ -722,11 +741,10 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
         ("quote", "quote.user.id"),
         ("reply", "in_reply_to_user_id"),
     ):
-
         layer = pd.read_json(
             processed_path / f"user.{layer_name}_edges.all.json.gz", lines=True
         )
-        if (layer.empty):
+        if layer.empty:
             layer = pd.DataFrame(columns=["user.id", layer_column, "frequency"])
         layer.columns = ["source.id", "target.id", layer_name]
         layers = layers.merge(layer, how="outer").fillna(0)
@@ -758,10 +776,7 @@ def find_nodes_in_discussion_arrow(processed_path, directed=False, overwrite=Fal
         ("quote", "quote.user.id"),
         ("reply", "in_reply_to_user_id"),
     ):
-
-        layer = dd.read_parquet(
-            processed_path / f"user.{layer_name}_edges.all.parquet"
-        )
+        layer = dd.read_parquet(processed_path / f"user.{layer_name}_edges.all.parquet")
         if len(layer.columns) == 0:
             layer = pd.DataFrame(columns=["user.id", layer_column, "frequency"])
         layer.columns = ["source.id", "target.id", layer_name]
@@ -834,9 +849,7 @@ def build_network(
     edges["target"] = edges[target_column].map(id_to_node)
 
     # users that are not in the network: an empty row. we need it, but we don't need empty columns
-    sparse_adjacency_matrix = dok_matrix(
-        (len(elem_to_id), len(id_to_node)), dtype=int
-    )
+    sparse_adjacency_matrix = dok_matrix((len(elem_to_id), len(id_to_node)), dtype=int)
 
     for row in edges.itertuples():
         sparse_adjacency_matrix[
@@ -886,11 +899,7 @@ def build_network_arrow(
         )
     )
 
-    id_to_node_df = (
-        pd.Series(id_to_node)
-        .rename("node_id")
-        .reset_index()
-    )
+    id_to_node_df = pd.Series(id_to_node).rename("node_id").reset_index()
     id_to_node_df = pa.Table.from_pandas(id_to_node_df)
     pq.write_table(id_to_node_df, id_to_node_path, use_dictionary=False)
 
@@ -898,9 +907,7 @@ def build_network_arrow(
     edges["target"] = edges[target_column].map(id_to_node)
 
     # users that are not in the network: an empty row. we need it, but we don't need empty columns
-    sparse_adjacency_matrix = dok_matrix(
-        (len(elem_to_id), len(id_to_node)), dtype=int
-    )
+    sparse_adjacency_matrix = dok_matrix((len(elem_to_id), len(id_to_node)), dtype=int)
 
     for row in edges.itertuples():
         sparse_adjacency_matrix[
@@ -960,8 +967,7 @@ def group_user_interactions_arrow(
             interaction_dd.groupby([source_column, target_column]).sum().compute()
         )
         interactions_table = pa.Table.from_pandas(interactions.reset_index())
-        pq.write_table(interactions_table,
-                       interactions_target, use_dictionary=False)
+        pq.write_table(interactions_table, interactions_target, use_dictionary=False)
         logging.info(
             f"user.{interaction_name} (#{len(interactions)}) -> {interactions_target}"
         )
@@ -1050,9 +1056,13 @@ def group_user_urls_arrow(
         .assign(token_id=lambda x: range(len(x)))
     )
     url_frequency_relevant_table = pa.Table.from_pandas(
-        url_frequency_relevant.reset_index())
-    pq.write_table(url_frequency_relevant_table,
-                   url_frequency_relevant_target, use_dictionary=False)
+        url_frequency_relevant.reset_index()
+    )
+    pq.write_table(
+        url_frequency_relevant_table,
+        url_frequency_relevant_target,
+        use_dictionary=False,
+    )
     logging.info(
         f"user.domains relevant vocabulary ({len(url_frequency_relevant)}) -> {url_frequency_relevant_target}"
     )
@@ -1138,7 +1148,8 @@ def group_profile_domains(
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
 
     logging.info(
-        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
+        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}"
+    )
     user_main_domain_matrix = dok_matrix(
         (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
     )
@@ -1251,7 +1262,8 @@ def group_profile_domains_arrow(
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
 
     logging.info(
-        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}")
+        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}"
+    )
     user_main_domain_matrix = dok_matrix(
         (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
     )

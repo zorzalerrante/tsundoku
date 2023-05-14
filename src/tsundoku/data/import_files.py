@@ -20,7 +20,7 @@ def main(source, target, encoding):
     project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
     logger.info(str(project.config))
 
-    target_path = project.data_path() / "raw" / "json" / target
+    target_path = project.data_path() / "raw" / "parquet" / target
     project.import_files(source, target_path)
 
 

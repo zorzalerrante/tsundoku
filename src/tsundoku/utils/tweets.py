@@ -1,113 +1,79 @@
-import numpy as np
-import pandas as pd
 import pyarrow as pa
 
-from tsundoku.features.re import PUNCTUATION_RE, URL_RE
 
-TWEET_DTYPES = {
-    "id": np.dtype("int64"),
-    "text": np.dtype("O"),
-    "created_at": np.dtype(
-        "datetime64[ns]"
-    ),  # pd.core.dtypes.dtypes.DatetimeTZDtype(tz='UTC'),
-    "lang": np.dtype("O"),
-    "entities.urls": np.dtype("O"),
-    "entities.user_mentions": np.dtype("O"),
-    "entities.hashtags": np.dtype("O"),
-    "user.id": np.dtype("int64"),
-    "user.description": np.dtype("O"),
-    "user.location": np.dtype("O"),
-    "user.name": np.dtype("O"),
-    "user.screen_name": np.dtype("O"),
-    "user.url": np.dtype("O"),
-    "user.protected": np.dtype("bool"),
-    "user.verified": np.dtype("bool"),
-    "user.followers_count": np.dtype("int64"),
-    "user.friends_count": np.dtype("int64"),
-    "user.listed_count": np.dtype("int64"),
-    "user.favourites_count": np.dtype("int64"),
-    "user.statuses_count": np.dtype("int64"),
-    "user.created_at": np.dtype(
-        "datetime64[ns]"
-    ),  # pd.core.dtypes.dtypes.DatetimeTZDtype(tz='UTC'),
-    # 'user.profile_image_url': np.dtype('O'),
-    "user.profile_image_url_https": np.dtype("O"),
-    "user.default_profile": np.dtype("bool"),
-    "user.default_profile_image": np.dtype("bool"),
-    "is_retweet": np.dtype("bool"),
-    "is_quote": np.dtype("bool"),
-    "is_reply": np.dtype("bool"),
-    "in_reply_to_user_id": np.dtype("int64"),
-    "in_reply_to_status_id": np.dtype("int64"),
-    "quote.id": np.dtype("int64"),
-    "quote.user.id": np.dtype("int64"),
-    "rt.id": np.dtype("int64"),
-    "rt.user.id": np.dtype("int64"),
-    "tweet.tokens": np.dtype("O"),
-    "user.description_tokens": np.dtype("O"),
-    "user.name_tokens": np.dtype("O"),
-}
-
-TWEET_DTYPES_ARROW = pa.schema([
-    pa.field('id', pa.int64()),
-    pa.field('text', pa.string()),
-    pa.field('created_at', pa.timestamp('ns', tz='UTC')),
-    pa.field('lang', pa.string()),
-    pa.field('entities', pa.struct({
-        'urls': pa.list_(pa.struct({
-            'url': pa.string(),
-            'expanded_url': pa.string(),
-            'display_url': pa.string()
-        })),
-        'user_mentions': pa.list_(pa.struct({
-            'screen_name': pa.string(),
-            'name': pa.string(),
-            'id': pa.int64()
-        })),
-        'hashtags': pa.list_(pa.string())
-    })),
-    pa.field('user', pa.struct({
-        'id': pa.int64(),
-        'description': pa.string(),
-        'location': pa.string(),
-        'name': pa.string(),
-        'screen_name': pa.string(),
-        'url': pa.string(),
-        'protected': pa.bool_(),
-        'verified': pa.bool_(),
-        'followers_count': pa.int64(),
-        'friends_count': pa.int64(),
-        'listed_count': pa.int64(),
-        'favourites_count': pa.int64(),
-        'statuses_count': pa.int64(),
-        'created_at': pa.timestamp('ns', tz='UTC'),
-        'profile_image_url_https': pa.string(),
-        'default_profile': pa.bool_(),
-        'default_profile_image': pa.bool_()
-    })),
-    pa.field('is_retweet', pa.bool_()),
-    pa.field('is_quote', pa.bool_()),
-    pa.field('is_reply', pa.bool_()),
-    pa.field('in_reply_to_user_id', pa.int64()),
-    pa.field('in_reply_to_status_id', pa.int64()),
-    pa.field('quote', pa.struct({
-        'id': pa.int64(),
-        'user': pa.struct({
-            'id': pa.int64()
-        })
-    })),
-    pa.field('rt', pa.struct({
-        'id': pa.int64(),
-        'user': pa.struct({
-            'id': pa.int64()
-        })
-    })),
-    pa.field('tweet', pa.struct({
-        'tokens': pa.list_(pa.string())
-    })),
-    pa.field('user.description_tokens', pa.list_(pa.string())),
-    pa.field('user.name_tokens', pa.list_(pa.string()))
-])
+TWEET_DTYPES = pa.schema(
+    [
+        pa.field("id", pa.int64()),
+        pa.field("text", pa.string()),
+        pa.field("created_at", pa.timestamp("ns", tz="UTC")),
+        pa.field("lang", pa.string()),
+        pa.field(
+            "entities",
+            pa.struct(
+                {
+                    "urls": pa.list_(
+                        pa.struct(
+                            {
+                                "url": pa.string(),
+                                "expanded_url": pa.string(),
+                                "display_url": pa.string(),
+                            }
+                        )
+                    ),
+                    "user_mentions": pa.list_(
+                        pa.struct(
+                            {
+                                "screen_name": pa.string(),
+                                "name": pa.string(),
+                                "id": pa.int64(),
+                            }
+                        )
+                    ),
+                    "hashtags": pa.list_(pa.string()),
+                }
+            ),
+        ),
+        pa.field(
+            "user",
+            pa.struct(
+                {
+                    "id": pa.int64(),
+                    "description": pa.string(),
+                    "location": pa.string(),
+                    "name": pa.string(),
+                    "screen_name": pa.string(),
+                    "url": pa.string(),
+                    "protected": pa.bool_(),
+                    "verified": pa.bool_(),
+                    "followers_count": pa.int64(),
+                    "friends_count": pa.int64(),
+                    "listed_count": pa.int64(),
+                    "favourites_count": pa.int64(),
+                    "statuses_count": pa.int64(),
+                    "created_at": pa.timestamp("ns", tz="UTC"),
+                    "profile_image_url_https": pa.string(),
+                    "default_profile": pa.bool_(),
+                    "default_profile_image": pa.bool_(),
+                }
+            ),
+        ),
+        pa.field("is_retweet", pa.bool_()),
+        pa.field("is_quote", pa.bool_()),
+        pa.field("is_reply", pa.bool_()),
+        pa.field("in_reply_to_user_id", pa.int64()),
+        pa.field("in_reply_to_status_id", pa.int64()),
+        pa.field(
+            "quote",
+            pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})}),
+        ),
+        pa.field(
+            "rt", pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})})
+        ),
+        pa.field("tweet", pa.struct({"tokens": pa.list_(pa.string())})),
+        pa.field("user.description_tokens", pa.list_(pa.string())),
+        pa.field("user.name_tokens", pa.list_(pa.string())),
+    ]
+)
 
 
 def flatten_tweet(tweet):
@@ -115,8 +81,6 @@ def flatten_tweet(tweet):
     urls = tweet_urls(tweet)
     mentions = tweet_mentions(tweet)
     hashtags = tweet_hashtags(tweet)
-    # created_at = parse_twitter_date(tweet['created_at'], self.timezone)
-    # user_created_at = parse_twitter_date(tweet['user']['created_at'], self.timezone)
 
     user = tweet["user"]
 
@@ -145,7 +109,9 @@ def flatten_tweet(tweet):
         "user.statuses_count": user["statuses_count"],
         "user.created_at": user["created_at"],
         # 'user.profile_image_url': user['profile_image_url'],
-        "user.profile_image_url_https": user["profile_image_url_https"] if user["profile_image_url_https"] else "",
+        "user.profile_image_url_https": user["profile_image_url_https"]
+        if user["profile_image_url_https"]
+        else "",
         "user.default_profile": user["default_profile"],
         "user.default_profile_image": user["default_profile_image"],
         # other

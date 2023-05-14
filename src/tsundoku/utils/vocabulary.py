@@ -1,25 +1,5 @@
-from glob import glob
-
-import dask
-import numpy as np
-import pandas as pd
-
-from tsundoku.features.dates import date_from_filename
-from tsundoku.features.re import PUNCTUATION_RE
-from tsundoku.helpers import read_list
-
-
-def to_array(x):
-    return np.squeeze(np.array(x))
-
-
-def build_elem_to_id(dask_df, key, keep="last"):
-    return (
-        dask_df.drop_duplicates(subset=key, keep=keep)[[key]]
-        .compute()
-        .assign(row_id=lambda x: range(len(x)))
-        .set_index(key)
-    )
+from tsundoku.utils.re import PUNCTUATION_RE
+from tsundoku.utils.files import read_list
 
 
 def remove_stopwords(df, stopwords_file, token_column="token"):
@@ -64,17 +44,10 @@ def filter_vocabulary(
     )
 
 
-def process_daily_files(path, fname_function, pipe_function=None, add_date=True):
-    files = glob(str(path))
-    tasks = [dask.delayed(fname_function)(fname) for fname in files]
-    results = dask.compute(*tasks)
-    df = pd.DataFrame.from_records(results)
-
-    if pipe_function is not None:
-        df = df.pipe(pipe_function)
-
-    if add_date:
-        dates = pd.Series(list(map(date_from_filename, files)), name="date")
-        return df.set_index(pd.to_datetime(dates)).sort_index()
-    else:
-        return df
+def build_elem_to_id(dask_df, key, keep="last"):
+    return (
+        dask_df.drop_duplicates(subset=key, keep=keep)[[key]]
+        .compute()
+        .assign(row_id=lambda x: range(len(x)))
+        .set_index(key)
+    )

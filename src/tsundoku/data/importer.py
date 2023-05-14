@@ -17,9 +17,9 @@ import dask.dataframe as dd
 
 from pyarrow import json as pa_json
 from datetime import datetime
-from tsundoku.helpers import read_list
-from tsundoku.features.text import tokenize
-from tsundoku.features.re import build_re_from_files
+from tsundoku.utils.files import read_list
+from tsundoku.utils.text import tokenize
+from tsundoku.utils.re import build_re_from_files
 from lru import LRU
 from cytoolz import pluck
 

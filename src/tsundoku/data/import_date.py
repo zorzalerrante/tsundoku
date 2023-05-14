@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 from tsundoku.data.importer import TweetImporter
-from tsundoku.features.timer import Timer
+from tsundoku.utils.timer import Timer
 
 
 @click.command()

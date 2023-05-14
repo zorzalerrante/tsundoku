@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
 import logging
 import os
-from glob import glob
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
+import re
 import click
 import dask
 import dask.dataframe as dd
@@ -13,12 +9,15 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import toml
-from dotenv import find_dotenv, load_dotenv
-import re
 
-from tsundoku.helpers import read_toml
-from tsundoku.models.pipeline import classifier_pipeline, save_classifier
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
+from dotenv import find_dotenv, load_dotenv
 from gensim.utils import deaccent
+
+from tsundoku.utils.files import read_toml
+from tsundoku.models.pipeline import classifier_pipeline, save_classifier
 
 
 @click.command()
@@ -87,16 +86,20 @@ def main(experiment, group, filetype):
 
     data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["path"]["data"]) / "processed"
-        / filetype / experimental_settings.get("key")
+        Path(config["path"]["data"])
+        / "processed"
+        / filetype
+        / experimental_settings.get("key")
     )
 
     with open(Path(config["path"]["config"]) / "groups" / f"{group_key}.toml") as f:
         group_config = toml.load(f)
 
-    user_ids = dd.read_parquet(
-        processed_path / "user.elem_ids.parquet"
-    ).set_index("user.id").compute()
+    user_ids = (
+        dd.read_parquet(processed_path / "user.elem_ids.parquet")
+        .set_index("user.id")
+        .compute()
+    )
     logging.info(f"Total users: #{len(user_ids)}")
 
     relevance_path = processed_path / "relevance.classification.predictions.parquet"
@@ -109,14 +112,15 @@ def main(experiment, group, filetype):
             "user_ids", None
         )
         allow_id_class = experiment_config[group_key]["allow_list"].get(
-            "assigned_class", 'undisclosed'
+            "assigned_class", "undisclosed"
         )
         logging.info(
-            f'Whitelisted accounts: #{len(allow_list_ids)}. Using class {allow_id_class}')
+            f"Whitelisted accounts: #{len(allow_list_ids)}. Using class {allow_id_class}"
+        )
     else:
         allow_list_ids = None
         allow_id_class = None
-        logging.info(f'No whitelisted accounts')
+        logging.info(f"No whitelisted accounts")
 
     if group_key != "relevance" and relevance_path.exists():
         user_groups = dd.read_parquet(relevance_path).set_index("user.id")
@@ -141,47 +145,46 @@ def main(experiment, group, filetype):
     # if there are location patterns, tream them specially:
     user_data = None
 
-    def load_user_data(): return (dd.read_parquet(processed_path / "user.unique.parquet")
-                                  .set_index("user.id")
-                                  .loc[user_ids.index]
-                                  .compute()
-                                  )
+    def load_user_data():
+        return (
+            dd.read_parquet(processed_path / "user.unique.parquet")
+            .set_index("user.id")
+            .loc[user_ids.index]
+            .compute()
+        )
 
     for key, meta in group_config.items():
         group_re = None
         try:
             print(f'location patterns for {key}, {meta["location"]["patterns"]}')
-            group_re = re.compile(
-                "|".join(meta["location"]["patterns"]), re.IGNORECASE
-            )
+            group_re = re.compile("|".join(meta["location"]["patterns"]), re.IGNORECASE)
         except KeyError:
             print(f"no location patterns in {key}")
             continue
 
         if user_data is None:
             user_data = load_user_data()
-            user_data["user.location"] = user_data["user.location"].fillna(
-                "").map(deaccent)
+            user_data["user.location"] = (
+                user_data["user.location"].fillna("").map(deaccent)
+            )
 
-        group_ids = user_data[
-            user_data["user.location"].str.contains(group_re)
-        ].index
+        group_ids = user_data[user_data["user.location"].str.contains(group_re)].index
 
-        if group == 'location':
+        if group == "location":
             # use these as account ids that cannot be modified (let's trust users)
-            if not 'account_ids' in meta:
-                meta['account_ids'] = dict()
+            if not "account_ids" in meta:
+                meta["account_ids"] = dict()
 
-            if not 'known_users' in meta:
-                meta['account_ids']['known_users'] = list(group_ids)
+            if not "known_users" in meta:
+                meta["account_ids"]["known_users"] = list(group_ids)
             else:
-                meta['account_ids']['known_users'].extend(group_ids)
+                meta["account_ids"]["known_users"].extend(group_ids)
         else:
             # use them as labels
             labels[key].loc[group_ids] = 1
 
     # special case: age
-    if group == 'age':
+    if group == "age":
         if user_data is None:
             user_data = load_user_data()
 
@@ -199,18 +202,25 @@ def main(experiment, group, filetype):
             return 0
 
         age_patterns = re.compile(
-            '(?:^|level|lvl|nivel)\s?([0-6][0-9])\.|(?:^|\W)([0-9]{2})\s?(?:años|veranos|otoños|inviernos|primaveras|years old|vueltas|lunas|soles)', flags=re.IGNORECASE | re.UNICODE)
+            "(?:^|level|lvl|nivel)\s?([0-6][0-9])\.|(?:^|\W)([0-9]{2})\s?(?:años|veranos|otoños|inviernos|primaveras|years old|vueltas|lunas|soles)",
+            flags=re.IGNORECASE | re.UNICODE,
+        )
 
-        found_age = user_data["user.description"].fillna(
-            "").str.findall(age_patterns).map(pick_age)
+        found_age = (
+            user_data["user.description"]
+            .fillna("")
+            .str.findall(age_patterns)
+            .map(pick_age)
+        )
         found_age = found_age[found_age.between(min_age, max_age)].copy()
-        print('found_age', found_age.shape)
+        print("found_age", found_age.shape)
 
         print(found_age.sample(10))
         print(found_age.value_counts())
 
         labeled_age = pd.cut(
-            found_age, bins=[0, 17, 29, 39, 49, max_age + 1], labels=group_config.keys())
+            found_age, bins=[0, 17, 29, 39, 49, max_age + 1], labels=group_config.keys()
+        )
 
         print(labeled_age.value_counts())
 
@@ -242,7 +252,7 @@ def main(experiment, group, filetype):
         early_stopping_rounds=pipeline_config["early_stopping_rounds"],
         eval_fraction=pipeline_config["eval_fraction"],
         threshold_offset_factor=pipeline_config["threshold_offset_factor"],
-        skip_numeric_tokens=skip_numeric_tokens
+        skip_numeric_tokens=skip_numeric_tokens,
     )
     save_classifier(
         group_key, processed_path, X, clf, predictions, feature_names_all, top_terms

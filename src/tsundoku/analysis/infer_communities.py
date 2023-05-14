@@ -1,22 +1,17 @@
-# -*- coding: utf-8 -*-
-import datetime
 import logging
 import os
-import re
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import click
 import dask
 import dask.dataframe as dd
-import joblib
-import numpy as np
 import pandas as pd
 import toml
+
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from sklearn.ensemble import IsolationForest
 
-from tsundoku.helpers import read_toml
+from tsundoku.utils.files import read_toml
 from aves.models.network import Network
 
 
@@ -93,10 +88,10 @@ def main(experiment):
         processed_path / "consolidated" / "rt_connected.network.gt"
     )
 
-    print('saved')
+    print("saved")
 
     connected_rt_network.detect_communities(
-        method='hierarchical', hierarchical_covariate_type="discrete-poisson"
+        method="hierarchical", hierarchical_covariate_type="discrete-poisson"
     )
 
     connected_rt_network.save(

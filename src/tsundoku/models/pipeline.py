@@ -3,22 +3,25 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+
 from scipy.sparse import csr_matrix, hstack, load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfTransformer
 
-from tsundoku.features.helpers import to_array
-from tsundoku.features.text import score_frequency_table
-from tsundoku.helpers import write_json
+from tsundoku.utils.array import to_array
+from tsundoku.utils.text import score_frequency_table
+from tsundoku.utils.files import write_json
+from tsundoku.utils.matrix import load_matrix_and_features
 from tsundoku.models.classifier import PartiallyLabeledXGB, cross_validate
-from tsundoku.models.helpers import load_matrix_and_features, load_matrix_and_features_from_parquet
 
 
-def search_tokens(vocabulary, matrix, model_config, token_type, skip_numeric_tokens=False):
+def search_tokens(
+    vocabulary, matrix, model_config, token_type, skip_numeric_tokens=False
+):
     group_user_ids = {}
     to_remove_feature_ids = []
 
     if skip_numeric_tokens:
-        vocabulary = vocabulary[~vocabulary['token'].str.is_numeric()].copy()
+        vocabulary = vocabulary[~vocabulary["token"].str.is_numeric()].copy()
 
     for group, meta in model_config.items():
         try:
@@ -82,12 +85,12 @@ def process_matrix(
     #     path, matrix_key, names_key, name, index=index, token_id=token_id
     # )
 
-    raw_matrix, raw_features = load_matrix_and_features_from_parquet(
+    raw_matrix, raw_features = load_matrix_and_features(
         path, matrix_key, names_key, name, index=index, token_id=token_id
     )
 
     if skip_numeric_tokens:
-        raw_features = raw_features[~raw_features['token'].str.isnumeric()]
+        raw_features = raw_features[~raw_features["token"].str.isnumeric()]
 
     matrix, features, labeled_user_ids = search_tokens(
         raw_features, raw_matrix, config, name
@@ -101,7 +104,13 @@ def process_matrix(
 
 
 def prepare_features(
-    path, config, user_ids, labels, allowed_user_ids=None, tf_idf=False, skip_numeric_tokens=False
+    path,
+    config,
+    user_ids,
+    labels,
+    allowed_user_ids=None,
+    tf_idf=False,
+    skip_numeric_tokens=False,
 ):
     labels, domain_features, domain_feature_names, domain_labeled_ids = process_matrix(
         path,
@@ -111,7 +120,7 @@ def prepare_features(
         "user.domains",
         "user.domains",
         "domain",
-        index="domain"
+        index="domain",
     )
 
     labels, tweet_features, tweet_feature_names, tweet_labeled_ids = process_matrix(
@@ -136,7 +145,8 @@ def prepare_features(
         user_ids,
         "user.description_tokens",
         "user.description_tokens",
-        "description_token", skip_numeric_tokens=skip_numeric_tokens
+        "description_token",
+        skip_numeric_tokens=skip_numeric_tokens,
     )
 
     labels, name_features, name_feature_names, name_labeled_ids = process_matrix(
@@ -360,7 +370,7 @@ def train_and_run_classifier(
     X,
     single_labels,
     allowed_user_ids=None,
-    allowed_users_class='undisclosed',
+    allowed_users_class="undisclosed",
     eval_fraction=0.15,
     early_stopping_rounds=10,
     threshold_offset_factor=0.1,
@@ -418,14 +428,19 @@ def classifier_pipeline(
     labels,
     xgb_parameters,
     allowed_user_ids=None,
-    allowed_users_class='undisclosed',
+    allowed_users_class="undisclosed",
     early_stopping_rounds=15,
     eval_fraction=0.15,
     threshold_offset_factor=0.1,
-    skip_numeric_tokens=False
+    skip_numeric_tokens=False,
 ):
     X, single_labels, feature_names_all = prepare_features(
-        path, group_config, user_ids, labels, allowed_user_ids=allowed_user_ids, skip_numeric_tokens=skip_numeric_tokens
+        path,
+        group_config,
+        user_ids,
+        labels,
+        allowed_user_ids=allowed_user_ids,
+        skip_numeric_tokens=skip_numeric_tokens,
     )
     clf, predictions = train_and_run_classifier(
         xgb_parameters,
@@ -473,12 +488,15 @@ def save_classifier(elem_type, path, X, clf, predictions, feature_names_all, top
     pq.write_table(
         pa.Table.from_pandas(feature_names_all.reset_index()),
         path / f"{elem_type}.classification.features.parquet",
-        use_dictionary=False)
+        use_dictionary=False,
+    )
     pq.write_table(
         pa.Table.from_pandas(predictions.reset_index()),
         path / f"{elem_type}.classification.predictions.parquet",
-        use_dictionary=False)
+        use_dictionary=False,
+    )
     pq.write_table(
         pa.Table.from_pandas(top_terms.reset_index()),
         path / f"{elem_type}.classification.term_associations.parquet",
-        use_dictionary=False)
+        use_dictionary=False,
+    )
