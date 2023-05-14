@@ -6,8 +6,9 @@ class TimerError(Exception):
 
 
 class Timer:
-    def __init__(self):
+    def __init__(self, decimal_places=3):
         self._start_time = None
+        self.decimal_places = decimal_places
 
     def start(self):
         """Start a new timer"""
@@ -24,4 +25,4 @@ class Timer:
         elapsed_time = time.perf_counter() - self._start_time
         self._start_time = None
 
-        return elapsed_time
+        return round(elapsed_time, self.decimal_places)

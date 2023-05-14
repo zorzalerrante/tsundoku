@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from pathlib import Path
-
 import click
-import pandas as pd
+
+from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 from tsundoku.data.importer import TweetImporter

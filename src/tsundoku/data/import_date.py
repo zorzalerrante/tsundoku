@@ -3,28 +3,33 @@ import logging
 import os
 import click
 import pandas as pd
-import gzip
 
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
+
 from tsundoku.data.importer import TweetImporter
 from tsundoku.features.timer import Timer
 
+
 @click.command()
-@click.argument("date", type=str)
+@click.argument("date", type=str)  # format: YYYYMMDD
 @click.option("--days", default=1, type=int)
 @click.option("--encoding", default="utf-8", type=str)
-@click.option("--pattern", default="auroracl_{}.data.gz", type=str)
-def main(date, days, encoding, pattern):
+@click.option("--pattern", default="auroracl_{}.data.parquet", type=str)
+@click.option("--source_path", default="", type=str)
+def main(date, days, encoding, pattern, source_path):
     logger = logging.getLogger(__name__)
-    logger.info("making final data set from raw data")
+    logger.info("Making final dataset from raw data using arrow files")
 
     project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
     logger.info(str(project.config))
 
-    source_path = Path(os.environ["TWEET_PATH"])
-
-    logger.info("CURRENT TWEET_PATH: " + str(source_path) + str(source_path.exists()))
+    source_path = (
+        source_path
+        if (source_path != "")
+        else Path(os.environ["TWEET_PATH"]) / "parquet"
+    )
+    logger.info("CURRENT TWEET_PATH: " + str(source_path))
 
     t = Timer()
     chronometer = []
@@ -33,14 +38,13 @@ def main(date, days, encoding, pattern):
         t.start()
         current_date = str(current_date.date())
         project.import_date(current_date, pattern=pattern, source_path=source_path)
-        
         current_timer = t.stop()
         chronometer.append(current_timer)
         dates.append(current_date)
+        print(f"Succesfully imported {current_date} data in {current_timer} seconds!")
 
     logger.info("Chronometer: " + str(chronometer))
     logger.info("Chronometer dates: " + str(dates))
-
 
 
 if __name__ == "__main__":
