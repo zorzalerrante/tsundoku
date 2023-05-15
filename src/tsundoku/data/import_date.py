@@ -37,7 +37,9 @@ def main(date, days, encoding, pattern, source_path):
     for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
         t.start()
         current_date = str(current_date.date())
+
         project.import_date(current_date, pattern=pattern, source_path=source_path)
+
         current_timer = t.stop()
         chronometer.append(current_timer)
         dates.append(current_date)

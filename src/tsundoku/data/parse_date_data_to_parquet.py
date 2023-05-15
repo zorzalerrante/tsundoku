@@ -36,12 +36,14 @@ def main(date, days, encoding, pattern, target_path):
     for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
         t.start()
         current_date = str(current_date.date())
+
         project.parse_date_data_to_parquet(
             current_date,
             pattern=pattern,
             source_path=source_path,
             target_path=target_path,
         )
+
         current_timer = t.stop()
         chronometer.append(current_timer)
         dates.append(current_date)

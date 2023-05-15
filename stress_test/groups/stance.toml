@@ -1,0 +1,680 @@
+[empathy]
+title = 'Empathy'
+order = ['empathy', 'undisclosed', 'threat']
+undisclosed_title = 'Indecisos(as)/Sin Postura Explícita'
+threshold = 0.3 # low value to avoid applying the threshold
+
+
+[empathy.tweet_tokens]
+must_have = ['#bienvenidosachile',
+    '#chilesinbarreras',
+    '#chilediverso',
+    '#noalaxenofobia',
+    '#nomasxenofobia',
+    '#racismo',
+    '#stopracismo',
+    '#nomasracismo',
+    '#noalracismo',
+    '#pongamonosinmigrantes',
+    '#vecinomigrante',
+    '#encuentromigrante',
+    '#bienvenidosmigrantes',
+    '#ningunserhumanoesilegal',
+    '#nadieesilegal',
+    '#diacontraelracismo',
+    '#díacontraelracismo',
+    '#díadelrefugiado',
+    '#diadelrefugiado',
+    '#nohayserhumanoilegal',
+    '#redmigrante',
+    '#interculturalidad',
+    '#hermandad',
+    '#inclusión',
+    '#díadelmigrante',
+    '#marchanacionalmigrante',
+    '#fundacionfre',
+    '#oim',
+    '#nomasdiscriminacion',
+    '#discriminación',
+    '#todossomosmigrantes',
+    'inhumano',
+    'inhumanas',
+    'multicultural',
+    'diversidad',
+]
+
+[empathy.account_ids]
+known_users = [
+    3090538753, # OIMChile
+    396796970, # SJMChile
+    797349866125066240, #ptl2016cl
+    803265777981853696, # SomosFre
+    3938222837, # MigrantesChile
+    225445834, # camila_vallejo
+    59215690, # GiorgioJackson
+    722445423089160192, # migrantesUCM
+    2541619854, # MAM_Chile
+    402420539, # emiliatijoux
+    4119914644, # mbachelet
+    1248064796, # guillier
+    868229398645932033, # CHaitiana
+    118455518, # MaiteOrsini
+    607599017, # INCAMIChile
+    882731858148171776, # bienvenidosCH
+    892111460184330241, # Solidariohaiti
+    884199862409015297, # NazcaFundacion
+    2391672396, # ColombiayyChile
+    864571105989849088, # MejorPedaleando
+    # muchos tweets 
+    77748386, # ginniasa
+    1029333625, #jaimesponda
+    854755435257135107, # InmigranDerecho
+    868142929168171008, # Migrantes_Chile x guillier
+    110517361, # trigorosa
+    764265590, # siquieresmelees
+    312320490, # rocio1910911
+    353373673, # paillawen
+    512329706, # FabiParraguezM
+    149547493, # RodolfoNoriega
+    213023965, # azulvictoria
+    10307062, # ejopia
+    378674834, # conejovich
+    367776813, # BPulidoSalinas
+    835660603494641664, # DittusPezoa
+    731615873547567104, # Lapb77
+    17269554, # gransopi
+    257011925, # PatoGamblin
+    67820309, # Renolander
+    1316354762, # lvillavicenciom
+    360657563, # chileconvoca
+    28044540, # Lichy_O
+    58986916, # pinabertoglia
+    451043400, # Toto_gonzalez_
+    58845687, # revolucho
+    1467865266, # cvaloor
+    2200412632, # rodolfoxoliz
+    764265590, # siquieresmelees
+    351950906, # CarmenBorbarnF
+    361075013, # LuzPatriciaLeal
+    4656446602, # blogueviando
+    102656472, # veropinilla
+    166593565, # LosPROgresistas
+    525927578, # GonzaloECaceres (diría que no es empathy pero sí sé que NO es threat)
+    203186089, # Televisivamente (idem)
+    102780225, # van_sol
+    1004458884, # vito_cfc (1 tweet popular, pero confunde al clasificador)
+    48743374, # nzmores
+    82789418, # artecanal
+    302696790, # paulibarrales
+    3157812235, # andresporfiao
+    350533445, # AlvaroSalinasMD
+    68917670, # JorgeSharp
+    19003727, # marcoporchile
+    44953601, # pstarkn
+    59491406, # DoctorPichangas (es ambiguo su lenguaje pero tiene tweets específicos empathy)
+    116582459, # DiegoBlanco_9 (subió una foto que generó reacciones empáticas)
+    67776313, # pabloparedesm
+    1658271416, # marylen61 (caso borde, expresa empatía con inmigrantes pero racismo contra mapuches)
+    462433873, # MauricioTapiaR
+    6976792, # copano
+    55339985, # PedroMuhr
+    254007494, # rfantuzzih
+    187334532, # patonawrath
+    368065581, # LILIANARTEAGA
+    58764514, # mirnaschindler
+    131999252, # TePrefieroLibre
+    3028551262, # colomba_roja
+    3008742485, # adelawilliamsig
+    46278456, # hernanver
+    1444225568, # Tanniaustral
+    86333519, # NicoChiessa
+    93268716, # robertoampuero
+    9835572, # ciberchilenos
+    67332357, # Karend3nisse
+    58192120, # Censelio
+    180517250, # KaliaOnahe
+    584865059, # EvitaVergolini
+    104575381, # MattyLL
+    112881105, # lukastabja
+    3386614103, # BarbaraFuenttes
+    93880207, # Alvaradejo
+    380729941, # LaTutixsq
+    39584466, # camilocayuqueo
+    85353110, # jcreyess
+    2720322529, # marceguzmanz
+    44632616, # chika_camila
+    3293627433, # SerafinaMarina
+    278200435, # CeferinoMachuca
+    2385589586, # loayalau
+    121815507, # Krutsita
+    2433658940, # exministraMDS
+    847608247, # myaksicb
+    2938599875, # cesante59
+    61088503, # JP__Gonzalez
+    30687236, # Caco_en_LT
+    54636412, # BarbieBalor
+    2270847767, # magajedi36
+    90985318, # Ale_Basulto
+    418627521, # Stephduchiliq
+    2749212142, # GaelDiputada
+    269120217, # LeoCsm_
+    57806552, # randreszurita
+    2893463853, # FJVargasRivas
+    3333781205, # Marcelagp2
+    2558292633, # Prevenc_Moraga
+    733808318351708160, # giron_ngiron
+    597844030, # caroca_claudia
+    142128384, # mtzcanobra
+    84105861, # LAlquintaGonzal
+    924668228785319936, # Natbravos
+    136795810, # mousepaz
+    117484685, # _RafaStar
+    142017326, # valeinostrozach
+    701980448759619584, # Anggie_Oy
+    119237705 , # deRossiLayseca
+    2952365375 , # seba29950
+    257673794 , # DanteLizanaPea
+    100499436 , # yuyitoes
+    3385316387 , # victor_ca_po
+    3019782501 , # YYGUZMANN
+    855842649697288192 , # JuanEstay7
+    88841753 , # Soynano5
+    2726970885 , # zapatini2012
+    748202224615047168 , # TeresaRomeroT
+    178861392 , # granate74
+    755285257675563008 , # FcoReyeSanviT_T
+    146210941 , # mugreee
+    106762936 , # FlacaConTumbao
+    4334566337 , # Candonga9
+    125969936 , # nadell24
+    718421070370467841 , # cx_kmbiazo
+    242038752 , # marzx_03
+    721678881833488384 , # iChoropy
+    908424265 , # dacandrea
+    54355676 , # condorsebas
+    154393885 , # RodrigoPzA
+    764935269585915905 , # Alejaraya26
+    135977600 , # edwin_briceno
+    51182258 , # JuanVallejosC
+    441146994 , # FeCancino 26
+    180229216 , # Sepulento
+    1166425530 , # MilylaBajita
+    366332169 , # schleyerem
+    125447935 , # pentium2000
+    583027836 , # cl_english
+    99593440 , # Veronic_Zapatic
+    705154026569072642 , # FredericBerrone
+    271141419 , # in_transe
+    53175256 , # Pily_Vial
+    213274447 , # faltaderespeto
+    238278352 , # monkey__slut
+    66309096 , # PaulaJeriaT
+    149723559 , # crasenjo
+    119093496 , # SYDNEYHOUSTON
+    81469372 , # Moniartista
+    104509477 , # CamiNorero
+    211372960 , # rodmarquezm
+    783394383144095744 , # MarcelaVillena1
+    766260819457875968 , # jaime11302771
+    90968554 , # LeoMoralesG
+    221840149 , # pedrohazee
+    2994049918 , # TatySobarzo
+    89615743 , # negrodanny
+    39920212 , # Kmilarose
+    31635581 , # rodricast
+    99331727 , # bacarucci
+    617456059 , # sofiare92874573
+    1229992406 , # perdidaenelnort
+    135335077 , # elporfiaodetalc
+    233960672 , # LittleWitchSucy
+    889175258686779392 , # GloriaVerdugom
+    50347559 , # antropomemoria
+    495331235 , # jorgepizarr
+    253831507 , # maaaarceelaa
+    881907321156374528 , # leguavoz
+    2337754407 , # zulysarmientoc
+    2368147709 , # Aesio91
+    292613686 , # royarzunmorel
+    859594972126994434 , # RodrigoLeonPint
+    891797682049691650 , # gatita_critica
+    363873639 , # CarlosMuLec
+    873148596266426368 , # toledorom
+    141198267 , # saavedralillo
+    900303426 , # sederik03
+    116183433 , # Alvarez1618
+    139536245 , # Vale_negri
+    362126921 , # PefaurMiguel
+    22309781 , # FelipeParadaM
+    90319751 , # francofuica
+    927513425382641664 , # YulitzaRivero5
+    361632273 , # mara_figueroa
+    3434475657 , # poconchile
+    816151609784680449 , # SusanaBiUC
+    40383184 , # marielabeatriz
+    390435035 , # ali_vero
+    315539922 , # FabiSantelices
+    56525363 , # cataninja
+    332625879 , # n_melladoc
+    18357876 , # rcorbal
+    333606206 , # AdarosRosana
+    2890175546 , # tavosaintp
+    900367484 , # steinmetzketzer
+    197479612 , # victorigorhess
+    3552092237 , # juanialiaga29
+    626035158 , # mbschiaffino
+    217559261 , # carteldebrecht
+    866747161425391618 , # jesumguzman
+    2424510139 , # Jocaull
+    106937763 , # VTorneria #UBB
+    853435122800091136 , # MatelunaIsidora
+    1216967456 , # chriss_1970
+    226009026 , # jppincheira
+    1270672542 , # RegalonayFeliz con toques de threat
+    1705089362 , # maritaserey
+    1507982420 , # LoretoPatrix
+    68573675 , # estebanmsch
+    3372420016 , # March_pii
+    165553826 , # eholmedo
+    264842656 , # Viicko_chan
+    271385124 , # SilviaMelladoV
+    3341085351 , # YelyReinoso
+    339096452 , # VillitaJM
+    110533273 , # DulceColorMiel
+    1898269915 , # _jose_araya
+    3303698638 , # coraje_civil
+    227561560 , # californiano20
+    151950267 , # Juan_Yamil
+    113670579 , # JonathanOliva
+    120805186 , # MusicoPROG
+    89843135 , # jorgeivan1969
+    36715287 , # MikeUrraD
+    1596099066 , # rmovando
+    700135249 , # F_PeSa
+    99369175 , # ritamartamariol
+    402662474 , # Anabella_201104
+    850854847750524929 , # panoptico1969
+    468607032 , # MgSequeida
+    1117741274 , # andreaoyar
+    905544016426672129 , # Hans_solo_solo
+    32999020 , # AtacamaQuerida
+    2799148145 , # JuanThePiper
+    281175839 , # cuneoworld
+    150252018 , # zamoracarmen
+    4899867293 , # barpoki
+    802619463493423109 , # VPacheco111
+    97694188 , # rjzd
+    132189139 , # manuelvaldesv
+    772395882691989504 , # isabelita609
+    1548962454 , # NRiquelme87
+    336870254 , # pilita0412
+    1066898040 , # FVillanelo
+    469959247 , # frnando_castro
+    159722849 , # Campusour
+    4822985543 , # Gideath
+    1547173292 , # PabloSilvaNunez
+    726806823890763776 , # jtoledoconcha
+    1676502475 , # queerfcker
+    2363068878 , # HARTASMujeres
+    68588245 , # vikgon
+    494235814 , # RenatoArellanoG
+    319602691 , # ADRIANACERON1
+    2760458913 , # amunozmayne
+    4895781208 , # gloffka
+    52426295, # RendirseJamass
+    331370158 , # shivita73
+    239444448 , # Domoaukafe___
+    569515670 , # marapoquindo
+    80932787 , # Pabenri
+    1406713003 , # maitreyarojas
+    33989515 , # Patolinsky
+    118775171 , # dawsonchile
+    900001324422635520 , # Candida83686316
+    72168815 , # Marcelosancheza
+    196814138 , # ale_tapiamacaya
+    571565016 , # IurizarRuz
+    117287044 , # marysisi
+    625899985 , # jgalleguillosg
+    134347332 , # aandremarquez
+    939106239627382788, #ChumiVicuna
+    1668147889, #christianprez18
+]
+
+[empathy.domain]
+must_have = []
+
+[threat]
+title = 'Threat'
+
+[threat.tweet_tokens]
+must_have = ['#inmigrantesilegales',
+    '#nomasinmigrantes',
+    '*#stopracismo',
+    '#nomasilegales',
+    '#vendepatria',
+    '#estadodecatastrofe',
+    '#inmigraciónilegal',
+    '#nomasinmigracionilegal',
+    '#inmigracionilegaldesatada',
+    '#fuerailegalesdechile',
+    '#invasionmigrante',
+    'invasión',
+    'invaden',
+    'invadiendo',
+    'invadieron',
+    'invadido',
+    'deportarlos',
+    'descontrolada',
+    'incontrolable',
+    'catástrofe',
+    'turba'
+]
+
+[threat.account_ids]
+known_users = [
+    123955962, # joseantoniokast
+    59815228, # AXELKAISER
+    622098575, # melnicksergio
+    67038807, # allamand
+    39157375, # vanrysselberghe
+    251882678, # AldoDuqueSantos
+    # muchos RTs 
+    336168807, # koelner_haie
+    1014183349, # BulletTooth69
+    385247322, # LaLeyEsRelativa
+    220889747, # RENO_MAYOR
+    514499243, # TeresitaProuvay
+    781373150, # RobertoFinat
+    57352160, # hansfiebig
+    348681802, # GDuss_2018
+    3104840236, # sgarciac100
+    361024153, # SEBASMUGEN
+    361075013, # LuzPatriciaLeal
+    2743119166, # IWACQSIL,
+    544545714, # SquezadaPerez
+    3156227166, # AngelicaTaibe
+    186037690, # terranova60
+    39657009, # NCorrea27
+    76853737, # eugeforestal
+    161112036, # jebus_dice
+    3733877187, # pftupper
+    348681802, # GDuss_2018
+    81326325, # KidGuilty
+    172142093, # jmacostaa
+    140142851, # 1silveira
+    2445588200, # rbascu1
+    2312855916, # Bella_DiGenaro
+    2471381887, # berfontaine (habló de desempleo)
+    2364301646, # any1260
+    404365088, # heidyriveros
+    117324086, # maginwalo
+    750140344113573888, #nomasilegales
+    2845175344, # AsadAzzam32 
+    923957322803830784, # Meteofacho
+    80172796, # CarolinaDiAz_
+    847145408925196288, # SOLSTICIADE
+    159289079, # VVBozkurtkiz
+    193858846, # hrecabarren
+    1066427672, # CRLDEMONIO
+    56030770, # Iron_Queen
+    18375955, # ObservatorioDmc
+    822054335161008128, # yovankaregalona
+    724338968221855744, # SosNinosename1
+    436410694, # OscarKikeGarcia
+    103234367, # luzedwards
+    119165292, # karenleivae
+    348910228, # Eduardozeus
+    284693795, # patolabarcac
+    2638914111, # Vigourouxla
+    3846527421, # olgaluisavillal
+    808539232130174976, # Andrearoyer77
+    401501251, # Pinochet_OnLine
+    1549655910, # URZUALIRA (inmigración masiva)
+    218643993, # patricio1000000
+    837769579, # auger2017
+    1118197417, # marceladelgado2
+    909605670005198848, # Legion_74
+    885694613473906688, # Commander_SB
+    803765820702736384, # CHILENOPO
+    800344162700705793, # FirstSavant
+    91406304, # nibbo_31
+    2731953789, # RoqueSagrado
+    3404883903, # Lokillus_Locus
+    281115473, # maestratuya
+    50305602, # cardenaldo
+    827596386678009859, # azucena_lender
+    364267966, # "jorgeurzuab
+    863461294732701697, # SocialistaABC1
+    193853221, # MVargas
+    302219334, # tere_marinovic
+    114233663, # tono0
+    762572610672726016, # HectorCamus2
+    198727570, # wilro
+    840990568570322948, # Lepe86473216
+    2364301646, # casanovaany
+    507657159, # entransito7
+    369175179, # ClaudioRoaR
+    3383930915, # woks_waes
+    100772320, # elcarecompleto
+    157021885, # NattaHernandez
+    1258425566, # betolemaitre
+    33819876, # Acostadequien
+    583948906, # luchoroka
+    747617186479546369, # abejasdelmundo
+    331257093, # sergioulloa1
+    255992137, # Santita7
+    800344162700705793, # FirstSavant
+    744285151136485376, # tutitutera
+    32589585, # patricioarias
+    2303069323, # mely_morgan
+    942727303, # maquiavelo_eg
+    148972028, # RGLabbe
+    139450934, # fdo_buitrago
+    618254752, # sincortapisatv
+    149755277, # tonysosalocutor
+    944483328, # EdJorgePrats
+    126447938, # meyechs
+    850498572592320513, # Candy97048510
+    525441590, # Skorpio50
+    100806469, # HAL9000r
+    1831454923, # RespectsAnimals
+    414953855, # GermnEVogelB
+    808276629193654272 , # supernovaf_1000
+    3221202989, # Regia_Pam
+    630548401, # FACHOBOT
+    61175986, # mistervonc
+    945071414 , # gemmyfag
+    65370049 , # G_Velasco7
+    350579191 , # max_sinlimite
+    835904186566983680 , # GonzaloInzunza5
+    131919178 , # EVELYN_RODRIGO
+    100623398 , # ViajeraEscriba
+    935253220909289474 , # Pedro_Artista
+    707033929526722560 , # NunezHood
+    895441424979812352 , # Josher_black
+    889724851 , # jicfem
+    842423334 , # poulet1409
+    1890943417 , # NLleuful
+    1356050172 , # rodrigomoyano26
+    2433546938 , # WeberGer
+    1523214547 , # jotap039
+    3438716182 , # MEterno18
+    336886566 , # Pableitor1970
+    857381966898966528 , # Romina_ch_M
+    1344585997 , # myr_gerencia
+    2518953394 , # VerdugoAi
+    102188060 , # gentlegian
+    906186509988048896 , # CarlosT52222746
+    3225478401 , # oporto_isabel
+    272185372 , # mmadrigal13
+    73523577 , # Fdo_Espinoza
+    353987607 , # john_bike
+    1279125361 , # LilianaUlloa4
+    35277000 , # Gabi_pazz
+    931654933463683072 , # Lorna50425353
+    3296680483 , # roskildss
+    396329222 , # albo_rojo
+    143266481 , # roangri
+    902305122113515521 , # No_Siniestros
+    359795476 , # Triangulacion
+    88926817 , # paoleivas
+    48802813 , # KonkaO
+    1325281268 , # ventuve
+    828005204 , # Shenoute_
+    848867316779675650 , # FicaRafael
+    2267678630 , # GMOKOV
+    35242476 , # idamsou
+    2310953663 , # Kbravo142
+    53575307 , # lord_shamelo
+    1246350895 , # bosquedeflores
+    416489012 , # mellevelchanfle
+    1444298826 , # octupox
+    122855440 , # PedromCG_
+    3348363868 , # BlackDiurno
+    119023743 , # polkenn
+    202611047 , # ludelvaldivia
+    778607374277943296 , # FelipeLlimy
+    573641719, # fquitralgloor
+    104689141 , # LCastilloBza
+    876217283345096705 , # MarcelaSchaphe3
+    255191271 , # popper2011
+    180813122 , # rc_buyer
+    417793209 , # pauloubilla
+    552902037 , # epperezc
+    708419978157019137 , # marceedu612
+    1663864428 , # linnitta
+    268934796 , # cazajaba
+    889297156296896512 , # Czarveragua
+    182541524 , # maravenasilva
+    929899189756145665 , # Hernan37671374
+    918265785923063814 , # Capitalismo2020
+    119050365 , # Motitax
+    309216354 , # denispradenas
+    874616159055859713 , # AdasmeJamett
+    118672181 , # silviahistoria
+    963265195 , # Totodelamaza
+    742746698477404160 , # patricionunezz
+    767127381362573312 , # mony_rebelada
+    738162126875807744 , # MiguelSep18
+    95672614 , # CristianDlgado
+    1663539954 , # sole_azulazul
+    3411826019 , # czepedasuarez
+    773277989991833601 , # EdgarSe76113065
+    2385468203 , # ericksaavedrar
+    1426378807 , # gutembergyusse
+    106085723 , # monona2pilar
+    106570135 , # amacamar
+    190823789 , # Jl_narvaez
+    921579217338454016 , # SaavedraNibaldo
+    368008795 , # Paponca
+    587086274 , # CristianAbarcaA
+    60134880 , # patosanmartin
+    3294092180 , # AlmaPalaciosM
+    19735083 , # ricotutelinda
+    200185251 , # jpmezat
+    3408422697 , # sury032
+    2423196859 , # gamm_15
+    2752942426 , # brujamaladeloe1
+    881907321156374528 , # leguavoz
+    748402093573152769 , # MisRubelangel
+    260042760 , # bigboss_64
+    848896736873463811 , # CarlaSarav
+    131588280 , # Skelter77
+    597122355 , # JorgeMolinaAlva
+    47193898 , # RositaHM
+    563111498 , # DcolorRuth
+    792928827446005760 , # loreym86
+    1601935568 , # Patriota1959
+    3296591953 , # CesarTu1
+    12876552 , # monicazegers
+    128235845 , # 13mae13
+    818156267478929409 , # AntizurdoH
+    741832592048132096 , # AyarzaTere
+    915401615267549185 , # ker_hector
+    2382104094 , # Gambitholmes
+    932806770401128449 , # David11830572
+    880226257069367296 , # felpoydefelpa
+    271007757 , # lavoz79
+    779185318415179776 , # AranguizVasq
+    862526445582766080 , # silv_ron
+    2376438152 , # mdelosa_22
+    3035693771 , # VeromunozgMunoz
+    97293317 , # nikicita
+    784461138893410304 , # alejandroroste1
+    835485871696711681 , # nandosky85
+    907617106342096896 , # Antonio39643177
+    896473837231108096 , # JoseMig54725772
+    330160563 , # gladysfrp
+    234395197 , # piantaoLFC
+    591879367 , # hbrunag
+    66294467 , # EestiFann
+    96552631 , # PoppaeaSabina
+    932230710362025984 , # Mejnour1
+    2196248273 , # christiandherna
+    765316776829779968 , # Rotoweiller
+    1679747570 , # jrosses69
+    418817765 , # necorojasllanos
+    437535236 , # alvarodarevalo
+    1507982420 , # LoretoPatrix
+    872861216 , # oyarcecamusfito
+    742897549980401665 , # BechitoSud
+    125674547 , # MarcosJaraV
+    795984384344158208 , # paulae2018
+    246572556 , # opinacine
+    26594291 , # lautarop
+    860537304255012865 , # franciscodg40 no empathy
+    470007234 , # f3lipon83
+    3264596956 , # malegovi1974
+    901576349667786752 , # lahechizada123
+    2891441434 , # cfelmerv
+    2438529940 , # LilloRomy
+    3170125013 , # FranKo_Tira_Dor
+    705189121283780608 , # monicaesoterica
+    873758281113755652 , # pazzvictoriaa
+    752168041 , # ronaldlaraa
+    748320226006138880 , # barracuda2002
+    735553891 , # JosefinGarciah
+    855983152522821632 , # TubalkainMoab
+    1033948921 , # Roaklaudio
+    2431434513 , # siuyingchungs
+    1410445700 , # JQuiker
+    716785278866825216 , # sebastianelcan3
+    903248857928273920 , # CattyGonzalez5
+    68589322 , # amauryjuan
+    515773801 , # hebert_toro
+    703406147869528064 , # maspormenosya
+    106488992 , # CriAndrades
+    119771209 , # prodelqui
+    393771501 , # JSarrs
+    925864937431490561 , # OmerHidalgo
+    1628299986 , # maurodupin
+    900520526334099457 , # Francia96969934
+    2574816813 , # os_chinatow
+    891409165108826113 , # VctorMu69300070
+    833912988704837632 , # valeriatolosa_a
+    132685768 , # Davichon70
+    739572377382719489 , # VctorMa92767514
+    87845858 , # AndreaKohen
+    49878210 , # EliaGQuijano
+    837316942474199043 , # RisiMoreno
+    605143217 , # cariaen
+    60074417 , # TRINY113
+    930897769224601606 , # eastes_dallas
+    1645788686 , # Rodrigomunita
+    13172562 , # miturra
+    480770126, #fr_parisi
+    930875013963673600 , # glennisdavis854
+    856926445511340036 , # MIGUELSAEZM1
+    1388522522 , # SAndreaN92
+    30941197 , # hernanpass
+    942760463229767680 , # felipe_cariqueo
+    764493016283357184 , # thefomest
+    105879258 , # MARIEL_MATRONA
+    221555654 , # Leoguigno
+    103398445 , # maxi_ram
+    912299887282225152 , # tigreviejosolo
+    4046865814 , # ana_haak
+    2827278610, #Español AlbertoPugilato
+    2550559028, #Español nacionalista
+    798194510, #andreschellew1	
+    
+]
