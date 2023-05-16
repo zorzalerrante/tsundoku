@@ -1,0 +1,18 @@
+[project]
+name = "Stress Test Project"
+
+[project.path]
+config = "/mnt/c/Users/nicol/Escritorio/Tsundoku/tsundoku/example_project"
+data = "/mnt/c/Users/nicol/Escritorio/Tsundoku/data/tweets_data/2022_flattened"
+    
+[project.content]
+term_files = ["keywords.txt"]
+accepted_lang = ["es"]
+timezone = "America/Santiago"
+
+[project.content.user_matrix]
+stopwords_file = "stopwords.txt"
+lru_size = 500
+
+[project.environment]
+n_jobs = 3
