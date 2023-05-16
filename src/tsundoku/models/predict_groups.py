@@ -18,19 +18,16 @@ from gensim.utils import deaccent
 
 from tsundoku.utils.files import read_toml
 from tsundoku.models.pipeline import classifier_pipeline, save_classifier
+from tsundoku.utils.timer import Timer
 
 
 @click.command()
 @click.option("--experiment", type=str, default="full")
 @click.option("--group", type=str, default="relevance")
-@click.option("--filetype", type=str, default="json")
-def main(experiment, group, filetype):
+def main(experiment, group):
     """Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready to be analyzed (saved in ../processed/{filetype})
+    cleaned data ready to be analyzed (saved in ../processed/parquet)
     """
-
-    if filetype not in ["json", "parquet"]:
-        raise KeyError(filetype)
 
     experiment_name = experiment
     group_key = group
@@ -44,7 +41,7 @@ def main(experiment, group, filetype):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / filetype
+    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -88,7 +85,7 @@ def main(experiment, group, filetype):
     processed_path = (
         Path(config["path"]["data"])
         / "processed"
-        / filetype
+        / "parquet"
         / experimental_settings.get("key")
     )
 
@@ -241,6 +238,10 @@ def main(experiment, group, filetype):
     print(labels.sample(10))
     print(labels.sum())
 
+    t = Timer()
+    chronometer = []
+    process_names = []
+    t.start()
     clf, predictions, feature_names_all, top_terms, X = classifier_pipeline(
         processed_path,
         group_config,
@@ -254,6 +255,11 @@ def main(experiment, group, filetype):
         threshold_offset_factor=pipeline_config["threshold_offset_factor"],
         skip_numeric_tokens=skip_numeric_tokens,
     )
+
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"classification")
+
     save_classifier(
         group_key, processed_path, X, clf, predictions, feature_names_all, top_terms
     )
@@ -287,6 +293,9 @@ def main(experiment, group, filetype):
             .head(15)
         )
         print("")
+
+    logger.info("Chronometer: " + str(chronometer))
+    logger.info("Chronometer process names: " + str(process_names))
 
 
 if __name__ == "__main__":

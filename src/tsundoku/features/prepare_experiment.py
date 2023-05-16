@@ -26,6 +26,7 @@ from tsundoku.utils.files import read_toml
 from tsundoku.utils.urls import get_domain
 from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.utils.vocabulary import filter_vocabulary
+from tsundoku.utils.timer import Timer
 
 matplotlib.use("agg")
 
@@ -114,16 +115,17 @@ def main(experiment, overwrite):
     elem_type = "user"
     key_column = "user.id"
 
-    # let's rock
-
-    # the full user network
-    # user interactions
+    # We set the timer for all interactions and groups
+    t = Timer()
+    chronometer = []
+    process_names = []
 
     for int_name, int_column in (
         ("reply", "in_reply_to_user_id"),
         ("quote", "quote.user.id"),
         ("retweet", "rt.user.id"),
     ):
+        t.start()
         try:
             interaction_dd = dd_from_parquet_paths(
                 [d / f"{int_name}_edgelist.parquet" for d in data_paths]
@@ -141,7 +143,13 @@ def main(experiment, overwrite):
             overwrite=overwrite,
         )
 
+        current_timer = t.stop()
+        chronometer.append(current_timer)
+        process_names.append(f"{int_name}_interaction")
+
     # users
+
+    t.start()
     count_user_tweets(data_paths, processed_path, overwrite=overwrite)
     group_users(
         data_paths,
@@ -150,6 +158,9 @@ def main(experiment, overwrite):
         directed=bool(experimental_settings.get("discussion_directed", False)),
         overwrite=overwrite,
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"users_group")
 
     # matrices
     stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
@@ -167,6 +178,8 @@ def main(experiment, overwrite):
         .compute()
         .to_dict()
     )
+
+    t.start()
     build_vocabulary_and_matrix(
         users_dd,
         processed_path,
@@ -178,7 +191,11 @@ def main(experiment, overwrite):
         stopwords_file=stopwords_file,
         overwrite=overwrite,
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"user_name_vocabulary_matrix")
 
+    t.start()
     min_freq = experiment_config["thresholds"].get("description_tokens", 50)
     build_vocabulary_and_matrix(
         users_dd,
@@ -191,8 +208,13 @@ def main(experiment, overwrite):
         stopwords_file=stopwords_file,
         overwrite=overwrite,
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"user_descriptions_vocabulary_matrix")
 
     # user-tweet matrix
+
+    t.start()
     terms_dd = dd_from_parquet_paths(
         [d / "tweet_vocabulary.parquet" for d in data_paths]
     )
@@ -205,6 +227,9 @@ def main(experiment, overwrite):
         stopwords_file=stopwords_file,
         overwrite=overwrite,
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"users_tweet_terms_matrix")
 
     # user networks
     for int_name, int_column in (
@@ -212,20 +237,29 @@ def main(experiment, overwrite):
         ("quote", "quote.user.id"),
         ("retweet", "rt.user.id"),
     ):
+        t.start()
         # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
         # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
         build_network(
             int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
         )
+        current_timer = t.stop()
+        chronometer.append(current_timer)
+        process_names.append(f"{int_name}_interactions_network")
 
     # user tweet urls
+    t.start()
     urls_dd = dd_from_parquet_paths([d / "user_urls.parquet" for d in data_paths])
     min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
     group_user_urls(
         urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"users_url_group")
 
     # user profile domains
+    t.start()
     min_freq = experiment_config["thresholds"].get("profile_domains", 10)
     min_freq_tld = experiment_config["thresholds"].get("profile_tlds", 50)
     group_profile_domains(
@@ -236,6 +270,12 @@ def main(experiment, overwrite):
         min_freq_tld=min_freq_tld,
         overwrite=overwrite,
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"user_profile_domains_group")
+
+    logger.info("Chronometer: " + str(chronometer))
+    logger.info("Chronometer process names: " + str(process_names))
 
 
 def dd_from_parquet_paths(paths, min_size=100):
@@ -695,7 +735,7 @@ def group_profile_domains(
         profile_urls.groupby("user.main_domain").size().rename("frequency")
     )
 
-    logging.info(f"profile_domains 5: {str(profile_domains)}")
+    # logging.info(f"profile_domains 5: {str(profile_domains)}")
     min_freq = 2
     profile_domains = (
         profile_domains[profile_domains >= min_freq]
@@ -704,7 +744,7 @@ def group_profile_domains(
         .assign(token_id=lambda x: range(len(x)))
     )
 
-    logging.info(f"profile_domains 6: {str(profile_domains)}")
+    # logging.info(f"profile_domains 6: {str(profile_domains)}")
 
     profile_domains_table = pa.Table.from_pandas(profile_domains.reset_index())
     pq.write_table(profile_domains_table, profile_domains_target, use_dictionary=False)
@@ -712,9 +752,9 @@ def group_profile_domains(
 
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
 
-    logging.info(
-        f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}"
-    )
+    # logging.info(
+    #     f"user_main_domain_matrix CALL: {str(elem_to_id.values())} - {str(domain_to_id.values())}"
+    # )
     user_main_domain_matrix = dok_matrix(
         (max(elem_to_id.values()) + 1, max(domain_to_id.values()) + 1), dtype=int
     )
