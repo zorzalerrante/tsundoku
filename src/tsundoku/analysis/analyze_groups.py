@@ -24,6 +24,7 @@ from aves.models.network import Network
 # from tsundoku.utils.urls import DISCARD_URLS, get_domain
 from tsundoku.utils.users import USERS_DTYPES
 from tsundoku.utils.files import read_toml, write_json
+from tsundoku.utils.timer import Timer
 
 
 @click.command()
@@ -100,16 +101,35 @@ def main(experiment, group, overwrite):
         target_path.mkdir(parents=True)
         logging.info(f"{target_path} created")
 
+    t = Timer()
+    chronometer = []
+    process_names = []
+
+    t.start()
     user_ids = consolidate_users(
         processed_path, target_path, group, overwrite=overwrite
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"consolidate_users")
+
+    t.start()
     aggregate_daily_stats(
         data_paths, processed_path, user_ids, target_path, group, overwrite=overwrite
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"aggregate_daily_stats")
+
+    t.start()
     sum_word_frequencies_per_group(
         data_paths, processed_path, target_path, group, overwrite=overwrite
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"sum_word_frequencies_per_group")
 
+    t.start()
     identify_network_lcc(
         processed_path,
         target_path,
@@ -118,7 +138,11 @@ def main(experiment, group, overwrite):
         min_freq=experiment_config["thresholds"].get("edge_weight", 1),
         network_type="retweet",
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"identify_network_retweets")
 
+    t.start()
     identify_network_lcc(
         processed_path,
         target_path,
@@ -127,7 +151,11 @@ def main(experiment, group, overwrite):
         min_freq=experiment_config["thresholds"].get("edge_weight", 1),
         network_type="quote",
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"identify_network_quotes")
 
+    t.start()
     identify_network_lcc(
         processed_path,
         target_path,
@@ -136,6 +164,12 @@ def main(experiment, group, overwrite):
         min_freq=experiment_config["thresholds"].get("edge_weight", 1),
         network_type="reply",
     )
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"identify_network_replies")
+
+    logger.info("Chronometer: " + str(chronometer))
+    logger.info("Chronometer process names: " + str(process_names))
 
 
 def read_daily_stats(source_folder, user_ids):

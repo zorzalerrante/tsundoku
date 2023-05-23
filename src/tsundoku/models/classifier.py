@@ -45,8 +45,6 @@ class PartiallyLabeledXGB(object):
             fit_params["sample_weight"] = compute_sample_weight("balanced", y_labeled)
             self.xgb.fit(F_labeled, y_labeled, **fit_params)
 
-        
-
     def fit_calibrate(
         self,
         X,
@@ -99,12 +97,16 @@ class PartiallyLabeledXGB(object):
         # print('# rows with label', len(labeled_idx))
         y_labeled = y_test[labeled_idx]
         X_labeled = X_test[labeled_idx]
-        return classification_report(
-            y_labeled, self.predict(X_labeled), output_dict=output_dict
-        )
+        y_predicted = self.predict(X_labeled)
+
+        y_predicted = ["empathy" if y == 0 else "threat" for y in y_predicted]
+
+        return classification_report(y_labeled, y_predicted, output_dict=output_dict)
 
     def classify_and_label(self, X, min_probability, non_labeled_value=None):
-        results = pd.DataFrame(self.predict_proba(X), columns=self.label_encoder.classes_)
+        results = pd.DataFrame(
+            self.predict_proba(X), columns=self.label_encoder.classes_
+        )
         results["max_probability"] = results.max(axis=1)
         results["label"] = results[self.label_encoder.classes_].idxmax(axis=1)
         results["source"] = "xgb"

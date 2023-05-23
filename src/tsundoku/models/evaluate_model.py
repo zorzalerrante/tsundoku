@@ -23,10 +23,10 @@ from tsundoku.models.pipeline import evaluate, prepare_features
 
 
 @click.command()
-@click.argument("experiment_name", type=str)
-@click.argument("group_key", type=str)
+@click.option("--experiment", type=str, default="full")
+@click.option("--group", type=str, default="relevance")
 @click.option("--n_splits", default=5, type=int)
-def main(experiment_name, group_key, n_splits):
+def main(experiment, group, n_splits):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -39,7 +39,7 @@ def main(experiment_name, group_key, n_splits):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "json"
+    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -52,7 +52,7 @@ def main(experiment_name, group_key, n_splits):
         experiment_config = toml.load(f)
         logging.info(f"{experiment_config}")
 
-    experimental_settings = experiment_config["experiments"][experiment_name]
+    experimental_settings = experiment_config["experiments"][experiment]
     logging.info(f"Experimental settings: {experimental_settings}")
 
     source_folders = sorted(
@@ -81,27 +81,34 @@ def main(experiment_name, group_key, n_splits):
 
     data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
+        Path(config["path"]["data"])
+        / "processed"
+        / "parquet"
+        / experimental_settings.get("key")
     )
 
-    with open(Path(config["path"]["config"]) / "groups" / f"{group_key}.toml") as f:
+    with open(Path(config["path"]["config"]) / "groups" / f"{group}.toml") as f:
         group_config = toml.load(f)
 
     # these are sorted by tweet count!
-    user_ids = pd.read_json(
-        processed_path / "user.elem_ids.json.gz", lines=True
-    ).set_index("user.id")
+    user_ids = dd.read_parquet(processed_path / "user.elem_ids.parquet").set_index(
+        "user.id"
+    )
     logging.info(f"Total users: #{len(user_ids)}")
 
     # user_ids['rank_quartile'] = pd.qcut(user_ids['row_id'], 20, retbins=False, labels=range(20))
 
     # we discard noise to evaluate, including in stance classification!
-    user_groups = pd.read_json(
-        processed_path / "relevance.classification.predictions.json.gz", lines=True
-    ).set_index("user.id")
+    user_groups = (
+        dd.read_parquet(
+            processed_path / "relevance.classification.predictions.parquet", lines=True
+        )
+        .compute()
+        .set_index("user.id")
+    )
     valid_users = user_groups[user_groups["predicted_class"] != "noise"].index
     user_ids = user_ids.loc[valid_users].sort_values("row_id")
-    logging.info(f"Kept users for {group_key} prediction: #{len(user_ids)}")
+    logging.info(f"Kept users for {group} prediction: #{len(user_ids)}")
 
     columns = [g for g in group_config.keys() if g != "noise"]
 
@@ -109,11 +116,11 @@ def main(experiment_name, group_key, n_splits):
     #    del group_config['noise']
 
     labels = pd.DataFrame(
-        0, index=user_ids.index, columns=group_config.keys(), dtype=int
+        0, index=user_ids.index.compute(), columns=group_config.keys(), dtype=int
     )
 
-    xgb_parameters = experiment_config[group_key]["xgb"]
-    pipeline_config = experiment_config[group_key]["pipeline"]
+    xgb_parameters = experiment_config[group]["xgb"]
+    pipeline_config = experiment_config[group]["pipeline"]
 
     X, labels, feature_names_all = prepare_features(
         processed_path, group_config, user_ids, labels
@@ -124,7 +131,7 @@ def main(experiment_name, group_key, n_splits):
         xgb_parameters,
         X,
         labels,
-        group_key,
+        group,
         training_eval_fraction=pipeline_config["eval_fraction"],
         n_splits=n_splits,
     )

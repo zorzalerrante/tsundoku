@@ -2,7 +2,7 @@
 name = "Stress Test Project"
 
 [project.path]
-config = "/mnt/c/Users/nicol/Escritorio/Tsundoku/tsundoku/example_project"
+config = "/mnt/c/Users/nicol/Escritorio/Tsundoku/tsundoku/stress_test"
 data = "/mnt/c/Users/nicol/Escritorio/Tsundoku/data/tweets_data/2022_flattened"
     
 [project.content]

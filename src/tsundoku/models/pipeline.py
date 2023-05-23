@@ -242,7 +242,7 @@ def prepare_features(
 
         tagged_ids = set(values["account_ids"]["known_users"])
         tagged_ids = set(values["account_ids"]["known_users"]) & set(
-            user_ids.index.values
+            user_ids.index.compute().values
         )
         print(f"{key} has {len(tagged_ids)} valid account ids")
 
@@ -360,7 +360,7 @@ def evaluate(
         eval_fraction=training_eval_fraction,
     )
     write_json(
-        outputs, path / f"{elem_type}.classification_model.cross_validation.parquet"
+        outputs, path / f"{elem_type}.classification_model.cross_validation.json"
     )
     return outputs
 
