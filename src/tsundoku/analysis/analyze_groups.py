@@ -23,7 +23,7 @@ from aves.models.network import Network
 # from tsundoku.utils.tweets import TWEET_DTYPES
 # from tsundoku.utils.urls import DISCARD_URLS, get_domain
 from tsundoku.utils.users import USERS_DTYPES
-from tsundoku.utils.files import read_toml, write_json
+from tsundoku.utils.files import read_toml, write_parquet
 from tsundoku.utils.timer import Timer
 
 
@@ -395,12 +395,7 @@ def identify_network_lcc(
         target_path / f"network.{network_type}_filtered_node_components.parquet"
     )
 
-    node_components_table = pa.Table.from_pandas(node_components.reset_index())
-    pq.write_table(
-        node_components_table,
-        node_components_path,
-        use_dictionary=False,
-    )
+    write_parquet(node_components.reset_index(), node_components_path)
 
 
 if __name__ == "__main__":

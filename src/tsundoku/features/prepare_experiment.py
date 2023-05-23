@@ -22,7 +22,7 @@ from dotenv import find_dotenv, load_dotenv
 from aves.models.network import Network
 
 
-from tsundoku.utils.files import read_toml
+from tsundoku.utils.files import read_toml, write_parquet
 from tsundoku.utils.urls import get_domain
 from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.utils.vocabulary import filter_vocabulary
@@ -302,8 +302,7 @@ def count_user_tweets(data_paths, destination_path, overwrite=False):
         .reset_index()
     )
 
-    tweet_dd_table = pa.Table.from_pandas(tweet_dd)
-    pq.write_table(tweet_dd_table, count_target, use_dictionary=False)
+    write_parquet(tweet_dd, count_target)
     logging.info(f"user tweet counts -> {count_target}")
 
 
@@ -341,14 +340,12 @@ def group_users(
     )
     logging.info(f"total #users after joining with tweet count: {len(users)}")
 
-    users_table = pa.Table.from_pandas(users)
-    pq.write_table(users_table, target_file, use_dictionary=False)
+    write_parquet(users, target_file)
     logging.info(f"#{len(users)} users -> {target_file}")
 
     users = users[["user.id"]].assign(row_id=lambda x: range(len(x)))
 
-    users_table = pa.Table.from_pandas(users)
-    pq.write_table(users_table, elem_ids_target, use_dictionary=False)
+    write_parquet(users, elem_ids_target)
 
     logging.info(f"user row ids -> {elem_ids_target}")
 
@@ -383,8 +380,7 @@ def build_vocabulary_and_matrix(
         logging.info("vocabulary was computed! skipping.")
     else:
         vocabulary = build_vocabulary(dask_df, token_column, to_lower=to_lower)
-        vocabulary_table = pa.Table.from_pandas(vocabulary.reset_index())
-        pq.write_table(vocabulary_table, vocabulary_target, use_dictionary=False)
+        write_parquet(vocabulary.reset_index(), vocabulary_target)
         logging.info(f"{elem_type}.{token_column} vocabulary -> {vocabulary_target}")
 
         relevant_vocabulary = filter_vocabulary(
@@ -397,12 +393,7 @@ def build_vocabulary_and_matrix(
         logging.info(
             f"{elem_type}.{token_column} relevant vocabulary -> {relevant_vocabulary_target}"
         )
-        relevant_vocabulary_table = pa.Table.from_pandas(
-            relevant_vocabulary.reset_index()
-        )
-        pq.write_table(
-            relevant_vocabulary_table, relevant_vocabulary_target, use_dictionary=False
-        )
+        write_parquet(relevant_vocabulary.reset_index(), relevant_vocabulary_target)
 
     if not overwrite and token_matrix_target.exists():
         logging.info(f"{elem_type}.{token_column} matrix exists! skipping.")
@@ -448,10 +439,7 @@ def build_user_tweets_term_matrix(
         logging.info("vocabulary was computed! skipping.")
     else:
         full_vocabulary = term_frequencies.groupby("token")["frequency"].sum().compute()
-        full_vocabulary_table = pa.Table.from_pandas(full_vocabulary.reset_index())
-        pq.write_table(
-            full_vocabulary_table, full_vocabulary_target, use_dictionary=False
-        )
+        write_parquet(full_vocabulary.reset_index(), full_vocabulary_target)
         logging.info(f"user.tweet_tokens vocabulary -> {full_vocabulary_target}")
 
         relevant_full_vocabulary = filter_vocabulary(
@@ -460,13 +448,8 @@ def build_user_tweets_term_matrix(
             stopwords_file=stopwords_file,
             remove_punctuation=True,
         )
-        relevant_full_vocabulary_table = pa.Table.from_pandas(
-            relevant_full_vocabulary.reset_index()
-        )
-        pq.write_table(
-            relevant_full_vocabulary_table,
-            relevant_full_vocabulary_target,
-            use_dictionary=False,
+        write_parquet(
+            relevant_full_vocabulary.reset_index(), relevant_full_vocabulary_target
         )
 
         logging.info(
@@ -589,8 +572,7 @@ def build_network(
     )
 
     id_to_node_df = pd.Series(id_to_node).rename("node_id").reset_index()
-    id_to_node_df = pa.Table.from_pandas(id_to_node_df)
-    pq.write_table(id_to_node_df, id_to_node_path, use_dictionary=False)
+    write_parquet(id_to_node_df, id_to_node_path)
 
     edges["source"] = edges[source_column].map(id_to_node)
     edges["target"] = edges[target_column].map(id_to_node)
@@ -628,8 +610,7 @@ def group_user_interactions(
         interactions = (
             interaction_dd.groupby([source_column, target_column]).sum().compute()
         )
-        interactions_table = pa.Table.from_pandas(interactions.reset_index())
-        pq.write_table(interactions_table, interactions_target, use_dictionary=False)
+        write_parquet(interactions.reset_index(), interactions_target)
         logging.info(
             f"user.{interaction_name} (#{len(interactions)}) -> {interactions_target}"
         )
@@ -653,22 +634,14 @@ def group_user_urls(
     url_frequency = (
         urls.groupby("domain")["frequency"].sum().sort_values(ascending=False)
     )
-    url_frequency_table = pa.Table.from_pandas(url_frequency.reset_index())
-    pq.write_table(url_frequency_table, url_frequency_target, use_dictionary=False)
+    write_parquet(url_frequency.reset_index(), url_frequency_target)
 
     url_frequency_relevant = (
         url_frequency[url_frequency >= min_freq]
         .to_frame()
         .assign(token_id=lambda x: range(len(x)))
     )
-    url_frequency_relevant_table = pa.Table.from_pandas(
-        url_frequency_relevant.reset_index()
-    )
-    pq.write_table(
-        url_frequency_relevant_table,
-        url_frequency_relevant_target,
-        use_dictionary=False,
-    )
+    write_parquet(url_frequency_relevant.reset_index(), url_frequency_relevant_target)
     logging.info(
         f"user.domains relevant vocabulary ({len(url_frequency_relevant)}) -> {url_frequency_relevant_target}"
     )
@@ -746,8 +719,7 @@ def group_profile_domains(
 
     # logging.info(f"profile_domains 6: {str(profile_domains)}")
 
-    profile_domains_table = pa.Table.from_pandas(profile_domains.reset_index())
-    pq.write_table(profile_domains_table, profile_domains_target, use_dictionary=False)
+    write_parquet(profile_domains.reset_index(), profile_domains_target)
     logging.info(f"user.profile_domains -> {profile_domains_target}")
 
     domain_to_id = dict(zip(profile_domains.index, range(len(profile_domains))))
@@ -782,8 +754,7 @@ def group_profile_domains(
         .assign(token_id=lambda x: range(len(x)))
     )
 
-    profile_tlds_table = pa.Table.from_pandas(profile_tlds.reset_index())
-    pq.write_table(profile_tlds_table, profile_tlds_target, use_dictionary=False)
+    write_parquet(profile_tlds.reset_index(), profile_tlds_target)
     logging.info(f"user.profile_tlds -> {profile_tlds_target}")
 
     tld_to_id = dict(zip(profile_tlds.index, range(len(profile_tlds))))

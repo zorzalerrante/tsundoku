@@ -14,20 +14,22 @@ from tsundoku.utils.timer import Timer
 @click.command()
 @click.argument("date", type=str)  # format: YYYYMMDD
 @click.option("--days", default=1, type=int)
-@click.option("--encoding", default="utf-8", type=str)
 @click.option("--pattern", default="auroracl_{}.data.gz", type=str)
+@click.option("--source_path", default="", type=str)
 @click.option("--target_path", default="", type=str)
-def main(date, days, encoding, pattern, target_path):
+def main(date, days, pattern, source_path, target_path):
     logger = logging.getLogger(__name__)
     logger.info("Transforming from .json to .parquet for arrow library usage")
 
     project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
     logger.info(str(project.config))
 
-    source_path = Path(os.environ["TWEET_PATH"])
-    target_path = target_path if (target_path != "") else source_path / "parquet"
+    source_path = (
+        source_path if (source_path != "") else Path(os.environ["JSON_TWEET_PATH"])
+    )
+    target_path = target_path if (target_path != "") else Path(os.environ["TWEET_PATH"])
 
-    logger.info("CURRENT TWEET_PATH: " + str(source_path))
+    logger.info("CURRENT JSON_TWEET_PATH: " + str(source_path))
     logger.info("TARGET TWEET_PATH: " + str(target_path))
 
     t = Timer()

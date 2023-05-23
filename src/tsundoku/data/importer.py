@@ -2,10 +2,6 @@ import logging
 import os
 import re
 import zlib
-from itertools import chain
-from multiprocessing.pool import ThreadPool
-from pathlib import Path
-
 import ahocorasick
 import dask
 import pandas as pd
@@ -15,13 +11,18 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import dask.dataframe as dd
 
-from pyarrow import json as pa_json
-from datetime import datetime
-from tsundoku.utils.files import read_list
-from tsundoku.utils.text import tokenize
-from tsundoku.utils.re import build_re_from_files
 from lru import LRU
 from cytoolz import pluck
+from itertools import chain
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
+
+from pyarrow import json
+from datetime import datetime
+from tsundoku.utils.files import read_list, write_parquet
+from tsundoku.utils.text import tokenize
+from tsundoku.utils.re import build_re_from_files
+from tsundoku.utils.tweets import TWEET_DTYPES
 
 
 class TweetImporter(object):
@@ -46,7 +47,7 @@ class TweetImporter(object):
         )
 
     def filter_dataframe(self, df):
-        flag = pd.notnull(df["id"])
+        flag = df["id"].notna()
 
         if not self.location["accept_unknown"]:
             if self.location["patterns"]:
@@ -80,6 +81,16 @@ class TweetImporter(object):
             candidates = candidates[result]
 
         # self.logger.info(f"Keyword filtering: {len(candidates)} from {len(df)} tweets")
+
+        # adf["tweet.tokens"] = adf["text"].map(self.tokenize)
+        # adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
+        # adf["user.name_tokens"] = adf["user.name"].map(self.tokenize)
+        # adf["user.created_at"] = adf["user.created_at"].map(
+        #     lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
+        # )
+        # adf["created_at"] = adf["created_at"].map(
+        #     lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
+        # )
 
         return candidates
 
@@ -218,7 +229,6 @@ class TweetImporter(object):
     def parse_date_data_to_parquet(
         self, date, pattern, source_path, target_path, periods=24 * 6, freq="10t"
     ):
-        date_str = date
         date = pd.to_datetime(date)
 
         if type(source_path) == str:
@@ -249,7 +259,7 @@ class TweetImporter(object):
             else:
                 task_files.append(file_path)
 
-        self.logger.info(f"#files to import: {len(task_files)}")
+        self.logger.info(f"#files to transform: {len(task_files)}")
 
         self.import_parquet_files(task_files, target_path)
 
@@ -257,8 +267,8 @@ class TweetImporter(object):
         if not target_path.exists():
             target_path.mkdir(parents=True)
             self.logger.info("{} directory created".format(target_path))
-        # else:
-        # self.logger.info("{} exists".format(target_path))
+        else:
+            self.logger.info("{} exists".format(target_path))
 
         tasks = [
             dask.delayed(self._parse_files_to_parquet)(i, f, target_path)
@@ -269,17 +279,18 @@ class TweetImporter(object):
 
     def _parse_files_to_parquet(self, i, filename, target_path):
         try:
-            adf = pa_json.read_json(filename)
+            df = json.read_json(filename)
         except zlib.error:
-            self.logger.error(f"(#{i}) corrupted file: {filename}")
+            self.logger.error(f"ZLIB EXCEPTION - (#{i}) corrupted file: {filename}")
+            return 0
+        except pa.lib.ArrowInvalid:
+            self.logger.error(f"PYARROW EXCEPTION - (#{i}) corrupted file: {filename}")
             return 0
 
         target_file = target_path / f"{Path(filename).stem}.parquet"
 
-        pq.write_table(adf, target_file, use_dictionary=False)
-
-        # self.logger.info(f"(#{i}) parsed succesfully")
-        return adf.num_rows
+        pq.write_table(df, target_file, use_dictionary=False)
+        return df.num_rows
 
     def import_date(self, date, pattern, source_path, periods=24 * 6, freq="10t"):
         date_str = date
@@ -295,7 +306,7 @@ class TweetImporter(object):
         if not source_path.exists():
             raise ValueError(f"source_path ({source_path}) is not a valid path")
 
-        # self.logger.info(f"Source folder: {source_path}")
+        self.logger.info(f"Source folder: {source_path}")
 
         if not source_path.exists():
             raise IOError(f"{source_path} does not exist")
@@ -309,14 +320,14 @@ class TweetImporter(object):
             file_path = source_path / pattern.format(date.strftime("%Y%m%d%H%M"))
 
             if not file_path.exists():
-                # self.logger.info(f"{file_path} does not exist")
+                self.logger.info(f"{file_path} does not exist")
                 pass
             else:
                 task_files.append(file_path)
 
-        # self.logger.info(f"#files to import: {len(task_files)}")
+        self.logger.info(f"#files to import: {len(task_files)}")
 
-        parquet_path = self.data_path() / "raw" / "parquet" / date_str
+        parquet_path = self.data_path() / "raw" / date_str
 
         self.import_files(task_files, parquet_path, file_prefix="tweets.partition")
 
@@ -337,33 +348,12 @@ class TweetImporter(object):
         self.logger.info(f"done! imported {read_tweets} tweets")
 
     def _read_parquet_file(self, i, filename, target_path, file_prefix=None):
-        try:
-            adf = self.read_tweet_dataframe(filename)
-        except zlib.error:
-            self.logger.error(f"(#{i}) corrupted file: {filename}")
-            return 0
-
-        # if not "text" in adf or adf.empty:
-        #     self.logger.error(f"(#{i}) empty file: {filename}")
-        #     return 0
+        df = self.read_tweet_dataframe(filename)
 
         if file_prefix is not None:
             target_file = target_path / f"{file_prefix}.{i}.parquet"
         else:
             target_file = target_path / f"{Path(filename).stem}.{i}.parquet"
 
-        adf["tweet.tokens"] = adf["text"].map(self.tokenize)
-        adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
-        adf["user.name_tokens"] = adf["user.name"].map(self.tokenize)
-        adf["user.created_at"] = adf["user.created_at"].map(
-            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
-        )
-        adf["created_at"] = adf["created_at"].map(
-            lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
-        )
-
-        # self.logger.info(f"(#{i}) read {len(adf)} tweets from {filename}")
-        table = pa.Table.from_pandas(adf)
-        pq.write_table(table, target_file, use_dictionary=False)
-
-        return len(adf)
+        write_parquet(df, target_file)
+        return len(df)

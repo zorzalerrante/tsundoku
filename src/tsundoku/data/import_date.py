@@ -14,21 +14,16 @@ from tsundoku.utils.timer import Timer
 @click.command()
 @click.argument("date", type=str)  # format: YYYYMMDD
 @click.option("--days", default=1, type=int)
-@click.option("--encoding", default="utf-8", type=str)
 @click.option("--pattern", default="auroracl_{}.data.parquet", type=str)
 @click.option("--source_path", default="", type=str)
-def main(date, days, encoding, pattern, source_path):
+def main(date, days, pattern, source_path):
     logger = logging.getLogger(__name__)
     logger.info("Making final dataset from raw data using arrow files")
 
     project = TweetImporter(Path(os.environ["TSUNDOKU_PROJECT_PATH"]) / "config.toml")
     logger.info(str(project.config))
 
-    source_path = (
-        source_path
-        if (source_path != "")
-        else Path(os.environ["TWEET_PATH"]) / "parquet"
-    )
+    source_path = source_path if (source_path != "") else Path(os.environ["TWEET_PATH"])
     logger.info("CURRENT TWEET_PATH: " + str(source_path))
 
     t = Timer()

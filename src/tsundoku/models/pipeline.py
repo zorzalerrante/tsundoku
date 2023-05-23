@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 from tsundoku.utils.array import to_array
 from tsundoku.utils.text import score_frequency_table
-from tsundoku.utils.files import write_json
+from tsundoku.utils.files import write_json, write_parquet
 from tsundoku.utils.matrix import load_matrix_and_features
 from tsundoku.models.classifier import PartiallyLabeledXGB, cross_validate
 
@@ -485,18 +485,15 @@ def save_classifier(elem_type, path, X, clf, predictions, feature_names_all, top
 
     feature_names_all["token"] = feature_names_all["token"].astype(str)
 
-    pq.write_table(
-        pa.Table.from_pandas(feature_names_all.reset_index()),
+    write_parquet(
+        feature_names_all.reset_index(),
         path / f"{elem_type}.classification.features.parquet",
-        use_dictionary=False,
     )
-    pq.write_table(
-        pa.Table.from_pandas(predictions.reset_index()),
+    write_parquet(
+        predictions.reset_index(),
         path / f"{elem_type}.classification.predictions.parquet",
-        use_dictionary=False,
     )
-    pq.write_table(
-        pa.Table.from_pandas(top_terms.reset_index()),
+    write_parquet(
+        top_terms.reset_index(),
         path / f"{elem_type}.classification.term_associations.parquet",
-        use_dictionary=False,
     )
