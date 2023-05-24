@@ -35,7 +35,7 @@ def main(start_at, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config["environment"].get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
+    source_path = Path(config["path"]["data"]) / "raw"
 
     if not source_path.exists():
         raise FileNotFoundError(source_path)
@@ -55,7 +55,7 @@ def main(start_at, overwrite):
         if start_at and date < start_at:
             continue
 
-        target = Path(config["path"]["data"]) / "interim" / "parquet" / f"{date}"
+        target = Path(config["path"]["data"]) / "interim" / f"{date}"
 
         if not target.exists():
             target.mkdir(parents=True)

@@ -49,7 +49,7 @@ def main(experiment, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
+    source_path = Path(config["path"]["data"]) / "raw"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -96,12 +96,9 @@ def main(experiment, overwrite):
 
     # let's go
 
-    data_base = Path(config["path"]["data"]) / "interim" / "parquet"
+    data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["path"]["data"])
-        / "processed"
-        / "parquet"
-        / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
 
     if not processed_path.exists():

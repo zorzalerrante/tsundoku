@@ -242,7 +242,7 @@ def prepare_features(
 
         tagged_ids = set(values["account_ids"]["known_users"])
         tagged_ids = set(values["account_ids"]["known_users"]) & set(
-            user_ids.index.compute().values
+            user_ids.index.values
         )
         print(f"{key} has {len(tagged_ids)} valid account ids")
 

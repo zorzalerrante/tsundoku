@@ -47,7 +47,7 @@ def main(experiment, group, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
+    source_path = Path(config["path"]["data"]) / "raw"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -87,13 +87,10 @@ def main(experiment, group, overwrite):
 
     # let's go
 
-    data_base = Path(config["path"]["data"]) / "interim" / "parquet"
+    data_base = Path(config["path"]["data"]) / "interim"
     data_paths = [data_base / key for key in key_folders]
     processed_path = (
-        Path(config["path"]["data"])
-        / "processed"
-        / "parquet"
-        / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
     target_path = processed_path / "consolidated"
 
@@ -363,7 +360,6 @@ def identify_network_lcc(
     network_type="retweet",
 ):
     edges_file = processed_path / f"user.{network_type}_edges.all.parquet"
-
     edges = (
         dd.read_parquet(edges_file, engine="pyarrow")
         .pipe(lambda x: x[x["user.id"].isin(user_ids)])
