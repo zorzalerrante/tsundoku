@@ -4,8 +4,16 @@ import rapidjson as json
 import toml
 import dask
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from tsundoku.utils.dates import date_from_filename
+
+
+def write_parquet(obj, filename):
+    df = pa.Table.from_pandas(obj)
+    pq.write_table(df, filename, use_dictionary=False)
+    return
 
 
 def read_file(filename, encoding="utf-8"):

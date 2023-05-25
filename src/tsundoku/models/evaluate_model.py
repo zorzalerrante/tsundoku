@@ -13,12 +13,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-# from scipy.sparse import dok_matrix, save_npz
-
-# from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
-# from tsundoku.utils.tweets import TWEET_DTYPES
-# from tsundoku.utils.urls import DISCARD_URLS, get_domain
-from tsundoku.utils.files import read_json, read_toml, write_json
+from tsundoku.utils.files import read_toml
 from tsundoku.models.pipeline import evaluate, prepare_features
 
 
@@ -39,7 +34,7 @@ def main(experiment, group, n_splits):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
+    source_path = Path(config["path"]["data"]) / "raw"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -81,10 +76,7 @@ def main(experiment, group, n_splits):
 
     data_base = Path(config["path"]["data"]) / "interim"
     processed_path = (
-        Path(config["path"]["data"])
-        / "processed"
-        / "parquet"
-        / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
 
     with open(Path(config["path"]["config"]) / "groups" / f"{group}.toml") as f:

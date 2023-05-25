@@ -16,14 +16,8 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from aves.models.network import Network
 
-# from scipy.sparse import dok_matrix, save_npz
-
-# from tsundoku.utils.vocabulary import build_elem_to_id, filter_vocabulary
-# from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
-# from tsundoku.utils.tweets import TWEET_DTYPES
-# from tsundoku.utils.urls import DISCARD_URLS, get_domain
 from tsundoku.utils.users import USERS_DTYPES
-from tsundoku.utils.files import read_toml, write_json
+from tsundoku.utils.files import read_toml, write_parquet
 from tsundoku.utils.timer import Timer
 
 
@@ -47,7 +41,7 @@ def main(experiment, group, overwrite):
     logger.info(str(config))
     dask.config.set(pool=ThreadPool(int(config.get("n_jobs", 2))))
 
-    source_path = Path(config["path"]["data"]) / "raw" / "parquet"
+    source_path = Path(config["path"]["data"]) / "raw"
     experiment_file = Path(config["path"]["config"]) / "experiments.toml"
 
     if not source_path.exists():
@@ -87,13 +81,10 @@ def main(experiment, group, overwrite):
 
     # let's go
 
-    data_base = Path(config["path"]["data"]) / "interim" / "parquet"
+    data_base = Path(config["path"]["data"]) / "interim"
     data_paths = [data_base / key for key in key_folders]
     processed_path = (
-        Path(config["path"]["data"])
-        / "processed"
-        / "parquet"
-        / experimental_settings.get("key")
+        Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
     target_path = processed_path / "consolidated"
 
@@ -363,7 +354,6 @@ def identify_network_lcc(
     network_type="retweet",
 ):
     edges_file = processed_path / f"user.{network_type}_edges.all.parquet"
-
     edges = (
         dd.read_parquet(edges_file, engine="pyarrow")
         .pipe(lambda x: x[x["user.id"].isin(user_ids)])
@@ -395,12 +385,7 @@ def identify_network_lcc(
         target_path / f"network.{network_type}_filtered_node_components.parquet"
     )
 
-    node_components_table = pa.Table.from_pandas(node_components.reset_index())
-    pq.write_table(
-        node_components_table,
-        node_components_path,
-        use_dictionary=False,
-    )
+    write_parquet(node_components.reset_index(), node_components_path)
 
 
 if __name__ == "__main__":
