@@ -13,12 +13,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-# from scipy.sparse import dok_matrix, save_npz
-
-# from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
-# from tsundoku.utils.tweets import TWEET_DTYPES
-# from tsundoku.utils.urls import DISCARD_URLS, get_domain
-from tsundoku.utils.files import read_json, read_toml, write_json
+from tsundoku.utils.files import read_toml
 from tsundoku.models.pipeline import evaluate, prepare_features
 
 

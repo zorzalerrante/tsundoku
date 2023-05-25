@@ -55,13 +55,6 @@ def main(experiment):
         Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
 
-    # user_data = pd.read_json(
-    #     processed_path / "consolidated/user.consolidated_groups.parquet", lines=True
-    # )
-    # user_daily_stats = pd.read_json(
-    #     processed_path / "consolidated/user.daily_stats.parquet", lines=True
-    # )
-
     user_data = dd.read_parquet(
         processed_path / "consolidated/user.consolidated_groups.parquet",
         engine="pyarrow",

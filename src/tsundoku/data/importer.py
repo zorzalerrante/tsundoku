@@ -18,7 +18,6 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
 from pyarrow import json
-from datetime import datetime
 from tsundoku.utils.files import read_list, write_parquet
 from tsundoku.utils.text import tokenize
 from tsundoku.utils.re import build_re_from_files
@@ -81,16 +80,6 @@ class TweetImporter(object):
             candidates = candidates[result]
 
         # self.logger.info(f"Keyword filtering: {len(candidates)} from {len(df)} tweets")
-
-        # adf["tweet.tokens"] = adf["text"].map(self.tokenize)
-        # adf["user.description_tokens"] = adf["user.description"].map(self.tokenize)
-        # adf["user.name_tokens"] = adf["user.name"].map(self.tokenize)
-        # adf["user.created_at"] = adf["user.created_at"].map(
-        #     lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
-        # )
-        # adf["created_at"] = adf["created_at"].map(
-        #     lambda x: datetime.strptime(x, "%a %b %d %H:%M:%S %z %Y")
-        # )
 
         return candidates
 

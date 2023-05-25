@@ -3,9 +3,6 @@ import pandas as pd
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-# import graph_tool.topology
-# import graph_tool
 import dask.dataframe as dd
 import dask
 import click
@@ -20,7 +17,6 @@ from pathlib import Path
 from scipy.sparse import dok_matrix, save_npz
 from dotenv import find_dotenv, load_dotenv
 from aves.models.network import Network
-
 
 from tsundoku.utils.files import read_toml, write_parquet
 from tsundoku.utils.urls import get_domain
