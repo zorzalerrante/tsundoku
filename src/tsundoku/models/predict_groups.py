@@ -268,26 +268,27 @@ def main(experiment, group):
             top_terms[top_terms[loc] > 10]
             .sort_values(loc, ascending=False)[loc]
             .sample(min(25, len(top_terms[top_terms[loc] > 10])))
+            .head()
         )
         print(
             top_terms[top_terms.index.str.contains("tweet")]
             .sort_values(loc, ascending=False)[loc]
-            .head(15)
+            .head()
         )
         print(
             top_terms[top_terms.index.str.contains("#")]
             .sort_values(loc, ascending=False)[loc]
-            .head(15)
+            .head()
         )
         print(
             top_terms[top_terms.index.str.contains("@")]
             .sort_values(loc, ascending=False)[loc]
-            .head(15)
+            .head()
         )
         print(
             top_terms[top_terms.index.str.contains("domain")]
             .sort_values(loc, ascending=False)[loc]
-            .head(15)
+            .head()
         )
         print("")
 

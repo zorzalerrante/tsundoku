@@ -81,10 +81,6 @@ def process_matrix(
     tf_idf=False,
     skip_numeric_tokens=False,
 ):
-    # raw_matrix, raw_features = load_matrix_and_features(
-    #     path, matrix_key, names_key, name, index=index, token_id=token_id
-    # )
-
     raw_matrix, raw_features = load_matrix_and_features(
         path, matrix_key, names_key, name, index=index, token_id=token_id
     )
@@ -376,43 +372,47 @@ def train_and_run_classifier(
     threshold_offset_factor=0.1,
     preserve_labels=True,
 ):
-    clf = PartiallyLabeledXGB(xgb_params=parameters)
+    clf = PartiallyLabeledXGB(
+        xgb_params=parameters,
+        early_stopping_rounds=early_stopping_rounds,
+    )
     clf.fit(
         X,
         single_labels.values,
         eval_fraction=eval_fraction,
-        early_stopping_rounds=early_stopping_rounds,
     )
 
     classes = clf.classes_
     predictions = pd.DataFrame(clf.predict_proba(X), columns=classes)
     predictions["reported_label"] = single_labels.values
     predictions["user.id"] = single_labels.index.values
-
     predictions["predicted_class"] = predictions[classes].idxmax(axis=1)
 
     threshold = 1 / len(classes) + threshold_offset_factor
+
     # apply the threshold
     for key in classes:
         print(key, threshold, predictions[predictions[key] < threshold].shape)
-        predictions["predicted_class"][
-            (predictions["predicted_class"] == key) & (predictions[key] < threshold)
+        predictions.loc[
+            (predictions["predicted_class"] == key) & (predictions[key] < threshold),
+            "predicted_class",
         ] = "undisclosed"
 
     print(predictions["predicted_class"].value_counts())
 
     # enforce labeled users
     if preserve_labels:
-        predictions["predicted_class"][
-            pd.notnull(single_labels).values
+        predictions.loc[
+            pd.notnull(single_labels).values, "predicted_class"
         ] = single_labels[pd.notnull(single_labels)].values
         print(predictions["predicted_class"].value_counts())
 
     # if whitelisted users were marked as noise, reclassify them as "undisclosed"
     if allowed_user_ids is not None:
-        predictions["predicted_class"][
+        predictions.loc[
             (predictions["user.id"].isin(allowed_user_ids))
-            & (predictions["predicted_class"] == "noise")
+            & (predictions["predicted_class"] == "noise"),
+            "predicted_class",
         ] = allowed_users_class
         print(predictions["predicted_class"].value_counts())
 
