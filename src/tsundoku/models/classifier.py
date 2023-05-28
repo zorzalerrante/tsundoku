@@ -10,12 +10,13 @@ from xgboost.sklearn import XGBClassifier
 
 
 class PartiallyLabeledXGB(object):
-    def __init__(self, xgb_params=None, seed=42):
+    def __init__(self, xgb_params=None, seed=42, early_stopping_rounds=10):
         self.xgb = XGBClassifier(**xgb_params)
+        self.xgb.set_params(early_stopping_rounds=early_stopping_rounds)
         self.calibrated_clf = None
         self.label_encoder = LabelEncoder()
 
-    def fit(self, X, y, eval_set=None, eval_fraction=0.1, early_stopping_rounds=10):
+    def fit(self, X, y, eval_set=None, eval_fraction=0.1):
         F = X
 
         labeled_idx = np.arange(len(y))[pd.notnull(y)]
@@ -29,16 +30,21 @@ class PartiallyLabeledXGB(object):
 
         if eval_set is not None:
             fit_params["eval_set"] = eval_set
-            fit_params["early_stopping_rounds"] = early_stopping_rounds
             fit_params["sample_weight"] = compute_sample_weight("balanced", y_labeled)
             self.xgb.fit(F_labeled, y_labeled, **fit_params)
         elif eval_fraction > 0:
-            F_train, F_val, y_train, y_val = train_test_split(
-                F_labeled, y_labeled, test_size=eval_fraction, stratify=y_labeled
-            )
+            (unique, counts) = np.unique(y_labeled, return_counts=True)
+            if 1 not in counts:
+                F_train, F_val, y_train, y_val = train_test_split(
+                    F_labeled, y_labeled, test_size=eval_fraction, stratify=y_labeled
+                )
+            else:
+                F_train, F_val, y_train, y_val = train_test_split(
+                    F_labeled, y_labeled, test_size=eval_fraction
+                )
+
             print("# validation rows", len(y_val))
             fit_params["eval_set"] = [[F_val, y_val]]
-            fit_params["early_stopping_rounds"] = early_stopping_rounds
             fit_params["sample_weight"] = compute_sample_weight("balanced", y_train)
             self.xgb.fit(F_train, y_train, **fit_params)
         else:
@@ -52,7 +58,6 @@ class PartiallyLabeledXGB(object):
         val_fraction=0.1,
         eval_set=None,
         eval_fraction=0.1,
-        early_stopping_rounds=10,
     ):
         labeled_idx = np.arange(len(y))[pd.notnull(y)]
         y_labeled = self.label_encoder.fit_transform(y[labeled_idx])
@@ -65,13 +70,7 @@ class PartiallyLabeledXGB(object):
         )
         print("# calibration rows", len(y_val))
         print(frequencies(y_val))
-        self.fit(
-            X_train,
-            y_train,
-            eval_set=eval_set,
-            eval_fraction=eval_fraction,
-            early_stopping_rounds=early_stopping_rounds,
-        )
+        self.fit(X_train, y_train, eval_set=eval_set, eval_fraction=eval_fraction)
 
         self.calibrated_clf = CalibratedClassifierCV(
             self.xgb, cv="prefit", method="isotonic"
@@ -121,7 +120,6 @@ def cross_validate(
     X,
     y,
     eval_fraction=0.1,
-    early_stopping_rounds=10,
     stratify_on=None,
     n_splits=5,
     random_state=42,
@@ -150,7 +148,6 @@ def cross_validate(
             X_train,
             y_train,
             eval_fraction=eval_fraction,
-            early_stopping_rounds=early_stopping_rounds,
         )
 
         report = clf.classify_and_report(y_test, X_test, output_dict=True)

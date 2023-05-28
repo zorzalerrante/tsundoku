@@ -115,7 +115,7 @@ def main(experiment, group, n_splits):
     pipeline_config = experiment_config[group]["pipeline"]
 
     X, labels, feature_names_all = prepare_features(
-        processed_path, group_config, user_ids, labels
+        processed_path, group_config, user_ids.compute(), labels
     )
 
     outputs = evaluate(
