@@ -52,6 +52,7 @@ Create an `.env` file in the root of this repository with the following structur
 TSUNDOKU_PROJECT_PATH=./example_project
 INCOMING_PATH=/home/egraells/data/tweets/incoming
 TWEET_PATH=/home/egraells/data/tweets/2021_flattened
+JSON_TWEET_PATH=/mnt/c/Users/nicol/Escritorio/2022_flattened
 TSUNDOKU_LANGUAGES="es|und"
 ```
 

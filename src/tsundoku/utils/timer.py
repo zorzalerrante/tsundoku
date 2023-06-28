@@ -13,7 +13,8 @@ class Timer:
     def start(self):
         """Start a new timer"""
         if self._start_time is not None:
-            raise TimerError(f"Timer is running. Use .stop() to stop it")
+            self._start_time = None
+            # raise TimerError(f"Timer is running. Use .stop() to stop it")
 
         self._start_time = time.perf_counter()
 

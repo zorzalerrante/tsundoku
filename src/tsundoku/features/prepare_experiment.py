@@ -24,6 +24,16 @@ from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.utils.vocabulary import filter_vocabulary
 from tsundoku.utils.timer import Timer
 
+# BERT TOKENIZER FOR WORD EMBEDDINGS
+from transformers import BertTokenizer, BertModel
+import torch
+from torch.utils.data import Dataset
+
+
+PRE_TRAINED_MODEL_NAME = "dccuchile/bert-base-spanish-wwm-cased"
+BETOTokenizer = BertTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME)
+BETOModel = BertModel.from_pretrained(PRE_TRAINED_MODEL_NAME)
+
 matplotlib.use("agg")
 
 
@@ -141,7 +151,6 @@ def main(experiment, overwrite):
         process_names.append(f"{int_name}_interaction")
 
     # users
-
     t.start()
     count_user_tweets(data_paths, processed_path, overwrite=overwrite)
     group_users(
@@ -154,6 +163,13 @@ def main(experiment, overwrite):
     current_timer = t.stop()
     chronometer.append(current_timer)
     process_names.append(f"users_group")
+
+    # users embeddings
+    t.start()
+    group_user_tweets_list(data_paths, processed_path, overwrite=overwrite)
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"users_embeddings")
 
     # matrices
     stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
@@ -297,6 +313,78 @@ def count_user_tweets(data_paths, destination_path, overwrite=False):
 
     write_parquet(tweet_dd, count_target)
     logging.info(f"user tweet counts -> {count_target}")
+
+
+def group_user_tweets_list(data_paths, destination_path, overwrite=False):
+    user_embedding_target = destination_path / "users.all.embeddings.matrix.npz"
+
+    if not overwrite and user_embedding_target.exists():
+        logging.info("tweets lists by user were computed! skipping.")
+        return
+
+    def combine_lists(lst):
+        combined_lst = []
+        for sublist in lst:
+            combined_lst.extend(sublist)
+        return combined_lst
+
+    tweets_list = (
+        dd_from_parquet_paths([d / "tweets_list_per_user.parquet" for d in data_paths])
+        .groupby("user.id")["tweets"]
+        .apply(combine_lists)
+        .reset_index()
+        .compute()
+    )
+    print(tweets_list.columns)
+
+    embeddings_dict = {}
+    for index, tweet_list in tweets_list.iterrows():
+        tweet_list_embedding = []
+        for tweet in tweet_list["tweets"]:
+            logging.info(f"current tweet: {tweet}")
+            # Tokenize our sentence with the BERT tokenizer.
+            tokenized_text = BETOTokenizer.tokenize(tweet)
+            # Map the token strings to their vocabulary indeces.
+            indexed_tokens = BETOTokenizer.convert_tokens_to_ids(tokenized_text)
+            # Display the words with their indeces.
+            segments_ids = [1] * len(tokenized_text)
+
+            tokens_tensor = torch.tensor([indexed_tokens])
+            segments_tensors = torch.tensor([segments_ids])
+
+            BETOModel.eval()
+            with torch.no_grad():
+                outputs = BETOModel(tokens_tensor, segments_tensors)
+                hidden_states = outputs[2]
+            token_embeddings = torch.stack(hidden_states, dim=0)
+            token_embeddings = torch.squeeze(token_embeddings, dim=1)
+            token_embeddings = token_embeddings.permute(1, 0, 2)
+
+            # `token_vecs` is a tensor with shape [n x 768]
+            token_vecs = hidden_states[-2][0]
+            # Calculate the average of all n token vectors.
+            sentence_embedding = torch.mean(token_vecs, dim=0)
+
+            token_vecs_sum = []
+            # For each token in the sentence...
+            for token in token_embeddings:
+                # Sum the vectors from the last four layers.
+                sum_vec = torch.sum(token[-4:], dim=0)
+                # Use `sum_vec` to represent `token`.
+                token_vecs_sum.append(sum_vec)
+            # `token_vecs` is a tensor with shape [n x 768]
+            token_vecs = hidden_states[-2][0]
+
+            # Calculate the average of all n token vectors.
+            sentence_embedding = torch.mean(token_vecs, dim=0)
+            tweet_list_embedding.append(sentence_embedding)
+
+        tweet_list_embedding = torch.stack(tweet_list_embedding)
+        user_embedding = torch.mean(tweet_list_embedding, dim=0)
+        embeddings_dict[str(index)] = user_embedding.numpy()
+
+    save_npz(user_embedding_target, embeddings_dict)
+    logging.info(f"users.embeddings matrix -> {user_embedding_target}")
 
 
 def group_users(

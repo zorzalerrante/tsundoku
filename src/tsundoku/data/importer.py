@@ -278,7 +278,7 @@ class TweetImporter(object):
 
         target_file = target_path / f"{Path(filename).stem}.parquet"
 
-        pq.write_table(df, target_file, use_dictionary=False)
+        pq.write_table(df, target_file, use_dictionary=False, schema=TWEET_DTYPES)
         return df.num_rows
 
     def import_date(self, date, pattern, source_path, periods=24 * 6, freq="10t"):

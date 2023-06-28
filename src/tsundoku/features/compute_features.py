@@ -161,6 +161,19 @@ def compute_tweet_metrics(tweets, target_path, overwrite):
         tweets_per_user.columns = tweets_per_user.columns.astype(str)
         write_parquet(tweets_per_user, target_path / "tweets_per_user.parquet")
 
+    if overwrite or not (target_path / "tweets_list_per_user.parquet").exists():
+        tweets_list_per_user = (
+            tweets.drop_duplicates("id")
+            .groupby("user.id")["text"]
+            .agg(list)
+            .reset_index()
+            .compute()
+        )
+        tweets_list_per_user = tweets_list_per_user.rename(columns={"text": "tweets"})
+        write_parquet(
+            tweets_list_per_user, target_path / "tweets_list_per_user.parquet"
+        )
+
     tweet_vocabulary = None
 
     if overwrite or not (target_path / "tweet_vocabulary.parquet").exists():
@@ -182,18 +195,15 @@ def compute_tweet_metrics(tweets, target_path, overwrite):
         if tweet_vocabulary is None:
             tweet_vocabulary = dd.read_parquet(target_path / "tweet_vocabulary.parquet")
 
-        (
+        tweet_token_frequency = (
             tweet_vocabulary.groupby("token")
             .agg(total_frequency=("frequency", "sum"), total_users=("user.id", "count"))
             .reset_index()
-            .to_json(
-                target_path / "tweet_token_frequency.parquet",
-                compression="gzip",
-                orient="records",
-                lines=True,
-            )
         )
-        pq.write_table(tweet_vocabulary, target_path / "tweet_token_frequency.parquet")
+
+        write_parquet(
+            tweet_token_frequency, target_path / "tweet_token_frequency.parquet"
+        )
 
         tweet_vocabulary = None
 
