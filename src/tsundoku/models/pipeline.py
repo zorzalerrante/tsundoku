@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pdb
 
 from scipy.sparse import csr_matrix, hstack, load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -10,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from tsundoku.utils.array import to_array
 from tsundoku.utils.text import score_frequency_table
 from tsundoku.utils.files import write_json, write_parquet
-from tsundoku.utils.matrix import load_matrix_and_features
+from tsundoku.utils.matrix import load_matrix_and_features, load_raw_matrix
 from tsundoku.models.classifier import PartiallyLabeledXGB, cross_validate
 
 
@@ -99,6 +100,19 @@ def process_matrix(
     return labels, matrix, features.compute(), labeled_user_ids
 
 
+def process_embedding_matrix(
+    path,
+    matrix_key,
+):
+    raw_matrix = load_raw_matrix(path, matrix_key)
+
+    features = pd.DataFrame(
+        [{"type": "embedding", "token": i} for i in range(raw_matrix.shape[1])]
+    )
+
+    return raw_matrix, features
+
+
 def prepare_features(
     path,
     config,
@@ -108,6 +122,7 @@ def prepare_features(
     tf_idf=False,
     skip_numeric_tokens=False,
 ):
+    print("preparing features")
     labels, domain_features, domain_feature_names, domain_labeled_ids = process_matrix(
         path,
         config,
@@ -223,6 +238,10 @@ def prepare_features(
         token_id="node_id",
     )
 
+    user_embeddings_matrix, user_embeddings_features = process_embedding_matrix(
+        path,
+        "users.all.embeddings",
+    )
     # remove contradicting labels
     # keep only labels with one class only
     class_label_counts = labels[labels.values > 0].astype(bool).sum(axis=1)
@@ -301,6 +320,8 @@ def prepare_features(
             rt_feature_names[["type", "token"]],
             reply_feature_names[["type", "token"]],
             quote_feature_names[["type", "token"]],
+            # user embeddings
+            user_embeddings_features,
             # rts per group
             pd.DataFrame({"type": "rt_group", "token": config.keys()}),
             pd.DataFrame({"type": "mention_group", "token": config.keys()}),
@@ -319,6 +340,7 @@ def prepare_features(
             rt_features,
             reply_features,
             quote_features,
+            user_embeddings_matrix,
             rts_per_group,
             replies_per_group,
             quotes_per_group,

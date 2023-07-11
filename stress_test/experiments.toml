@@ -4,7 +4,7 @@
 key = 'test'
 folder_pattern = '*'
 folder_start = '2022-01-27'
-folder_end = '2022-01-28'
+folder_end = '2022-01-31'
 # folder_end = '2022-03-31'
 discussion_only = 1
 discussion_directed = 0
@@ -24,9 +24,9 @@ alpha = 'asymmetric'
 name_tokens = 50
 description_tokens = 50
 tweet_tokens = 50
-tweet_domains = 50
-profile_domains = 30
-profile_tlds = 50
+tweet_domains = 20
+profile_domains = 20
+profile_tlds = 20
 edge_weight = 3
 
 [relevance]

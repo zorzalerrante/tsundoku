@@ -10,11 +10,12 @@ import copy
 import logging
 import os
 import matplotlib
+import tqdm
 
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from scipy.sparse import dok_matrix, save_npz
+from scipy.sparse import dok_matrix, save_npz, csr_matrix
 from dotenv import find_dotenv, load_dotenv
 from aves.models.network import Network
 
@@ -32,7 +33,7 @@ from torch.utils.data import Dataset
 
 PRE_TRAINED_MODEL_NAME = "dccuchile/bert-base-spanish-wwm-cased"
 BETOTokenizer = BertTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME)
-BETOModel = BertModel.from_pretrained(PRE_TRAINED_MODEL_NAME)
+BETOModel = BertModel.from_pretrained(PRE_TRAINED_MODEL_NAME, output_hidden_states=True)
 
 matplotlib.use("agg")
 
@@ -164,13 +165,6 @@ def main(experiment, overwrite):
     chronometer.append(current_timer)
     process_names.append(f"users_group")
 
-    # users embeddings
-    t.start()
-    group_user_tweets_list(data_paths, processed_path, overwrite=overwrite)
-    current_timer = t.stop()
-    chronometer.append(current_timer)
-    process_names.append(f"users_embeddings")
-
     # matrices
     stopwords_file = Path(config["path"]["config"]) / "stopwords.txt"
 
@@ -221,6 +215,13 @@ def main(experiment, overwrite):
     chronometer.append(current_timer)
     process_names.append(f"user_descriptions_vocabulary_matrix")
 
+    # users embeddings
+    t.start()
+    group_user_tweets_list(elem_to_id, data_paths, processed_path, overwrite=overwrite)
+    current_timer = t.stop()
+    chronometer.append(current_timer)
+    process_names.append(f"users_embeddings")
+
     # user-tweet matrix
 
     t.start()
@@ -261,7 +262,7 @@ def main(experiment, overwrite):
     urls_dd = dd_from_parquet_paths([d / "user_urls.parquet" for d in data_paths])
     min_freq = experiment_config["thresholds"].get("tweet_domains", 50)
     group_user_urls(
-        urls_dd, elem_to_id, processed_path, min_freq=50, overwrite=overwrite
+        urls_dd, elem_to_id, processed_path, min_freq=min_freq, overwrite=overwrite
     )
     current_timer = t.stop()
     chronometer.append(current_timer)
@@ -315,7 +316,7 @@ def count_user_tweets(data_paths, destination_path, overwrite=False):
     logging.info(f"user tweet counts -> {count_target}")
 
 
-def group_user_tweets_list(data_paths, destination_path, overwrite=False):
+def group_user_tweets_list(elem_to_id, data_paths, destination_path, overwrite=False):
     user_embedding_target = destination_path / "users.all.embeddings.matrix.npz"
 
     if not overwrite and user_embedding_target.exists():
@@ -331,17 +332,18 @@ def group_user_tweets_list(data_paths, destination_path, overwrite=False):
     tweets_list = (
         dd_from_parquet_paths([d / "tweets_list_per_user.parquet" for d in data_paths])
         .groupby("user.id")["tweets"]
-        .apply(combine_lists)
+        .apply(combine_lists)  # , meta={"user.id": "int", "tweets": "object"}
         .reset_index()
         .compute()
     )
-    print(tweets_list.columns)
 
-    embeddings_dict = {}
-    for index, tweet_list in tweets_list.iterrows():
+    embeddings_list = []
+    user_id_list = []
+    for index, tweet_list in tqdm.tqdm(
+        tweets_list.iterrows(), total=tweets_list.shape[0]
+    ):
         tweet_list_embedding = []
         for tweet in tweet_list["tweets"]:
-            logging.info(f"current tweet: {tweet}")
             # Tokenize our sentence with the BERT tokenizer.
             tokenized_text = BETOTokenizer.tokenize(tweet)
             # Map the token strings to their vocabulary indeces.
@@ -381,9 +383,23 @@ def group_user_tweets_list(data_paths, destination_path, overwrite=False):
 
         tweet_list_embedding = torch.stack(tweet_list_embedding)
         user_embedding = torch.mean(tweet_list_embedding, dim=0)
-        embeddings_dict[str(index)] = user_embedding.numpy()
+        embeddings_list.append(user_embedding.numpy())
+        user_id_list.append(tweet_list["user.id"])
 
-    save_npz(user_embedding_target, embeddings_dict)
+    n = len(embeddings_list[0])
+    user_embeddings_matrix = dok_matrix(
+        (max(elem_to_id.values()) + 1, n + 1), dtype=np.float32
+    )
+
+    for user_id, user_embedding in zip(user_id_list, embeddings_list):
+        if not user_id in elem_to_id:
+            continue
+        matrix_id = elem_to_id[user_id]
+        user_embeddings_matrix[matrix_id, :n] = user_embedding
+
+    user_embeddings_matrix = user_embeddings_matrix.tocsr()
+    save_npz(user_embedding_target, user_embeddings_matrix)
+
     logging.info(f"users.embeddings matrix -> {user_embedding_target}")
 
 

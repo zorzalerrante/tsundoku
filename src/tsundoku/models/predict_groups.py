@@ -126,7 +126,7 @@ def main(experiment, group):
 
         # note that even if we discard undisclosed users, they may be present in the allow_list.
         # we check agains the full list of users
-        if allow_list_ids:
+        if allow_list_ids is not None:
             valid_users = set(valid_users) | (set(allow_list_ids) & set(all_ids))
 
         user_ids = user_ids.loc[valid_users].sort_values("row_id")

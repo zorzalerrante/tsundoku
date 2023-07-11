@@ -23,3 +23,12 @@ def load_matrix_and_features(
     print(raw_features.head())
 
     return raw_matrix, raw_features
+
+
+def load_raw_matrix(
+    data_path,
+    matrix_key,
+):
+    raw_matrix = load_npz(data_path / f"{matrix_key}.matrix.npz")
+    print(repr(raw_matrix))
+    return raw_matrix
