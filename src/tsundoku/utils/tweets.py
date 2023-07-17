@@ -1,79 +1,87 @@
 import pyarrow as pa
 
+TWEET_FIELDS = [
+    pa.field("id", pa.int64()),
+    pa.field("text", pa.string()),
+    pa.field("created_at", pa.timestamp("ns", tz="UTC")),
+    pa.field("lang", pa.string()),
+    pa.field(
+        "entities",
+        pa.struct(
+            {
+                "urls": pa.list_(
+                    pa.struct(
+                        {
+                            "url": pa.string(),
+                            "expanded_url": pa.string(),
+                            "display_url": pa.string(),
+                        }
+                    )
+                ),
+                "user_mentions": pa.list_(
+                    pa.struct(
+                        {
+                            "screen_name": pa.string(),
+                            "name": pa.string(),
+                            "id": pa.int64(),
+                        }
+                    )
+                ),
+                "hashtags": pa.list_(pa.string()),
+            }
+        ),
+    ),
+    pa.field(
+        "user",
+        pa.struct(
+            {
+                "id": pa.int64(),
+                "description": pa.string(),
+                "location": pa.string(),
+                "name": pa.string(),
+                "screen_name": pa.string(),
+                "url": pa.string(),
+                "protected": pa.bool_(),
+                "verified": pa.bool_(),
+                "followers_count": pa.int64(),
+                "friends_count": pa.int64(),
+                "listed_count": pa.int64(),
+                "favourites_count": pa.int64(),
+                "statuses_count": pa.int64(),
+                "created_at": pa.timestamp("ns", tz="UTC"),
+                "profile_image_url_https": pa.string(),
+                "default_profile": pa.bool_(),
+                "default_profile_image": pa.bool_(),
+            }
+        ),
+    ),
+    pa.field("is_retweet", pa.bool_()),
+    pa.field("is_quote", pa.bool_()),
+    pa.field("is_reply", pa.bool_()),
+    pa.field("in_reply_to_user_id", pa.int64()),
+    pa.field("in_reply_to_status_id", pa.int64()),
+    pa.field(
+        "quote",
+        pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})}),
+    ),
+    pa.field(
+        "rt", pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})})
+    ),
+    pa.field("tweet", pa.struct({"tokens": pa.list_(pa.string())})),
+]
 
-TWEET_DTYPES = pa.schema(
+TWEET_FIELDS_EXTENDED = TWEET_FIELDS.copy()
+
+# Extender TWEET_FIELDS_EXTENDED con los campos adicionales
+TWEET_FIELDS_EXTENDED.extend(
     [
-        pa.field("id", pa.int64()),
-        pa.field("text", pa.string()),
-        pa.field("created_at", pa.timestamp("ns", tz="UTC")),
-        pa.field("lang", pa.string()),
-        pa.field(
-            "entities",
-            pa.struct(
-                {
-                    "urls": pa.list_(
-                        pa.struct(
-                            {
-                                "url": pa.string(),
-                                "expanded_url": pa.string(),
-                                "display_url": pa.string(),
-                            }
-                        )
-                    ),
-                    "user_mentions": pa.list_(
-                        pa.struct(
-                            {
-                                "screen_name": pa.string(),
-                                "name": pa.string(),
-                                "id": pa.int64(),
-                            }
-                        )
-                    ),
-                    "hashtags": pa.list_(pa.string()),
-                }
-            ),
-        ),
-        pa.field(
-            "user",
-            pa.struct(
-                {
-                    "id": pa.int64(),
-                    "description": pa.string(),
-                    "location": pa.string(),
-                    "name": pa.string(),
-                    "screen_name": pa.string(),
-                    "url": pa.string(),
-                    "protected": pa.bool_(),
-                    "verified": pa.bool_(),
-                    "followers_count": pa.int64(),
-                    "friends_count": pa.int64(),
-                    "listed_count": pa.int64(),
-                    "favourites_count": pa.int64(),
-                    "statuses_count": pa.int64(),
-                    "created_at": pa.timestamp("ns", tz="UTC"),
-                    "profile_image_url_https": pa.string(),
-                    "default_profile": pa.bool_(),
-                    "default_profile_image": pa.bool_(),
-                }
-            ),
-        ),
-        pa.field("is_retweet", pa.bool_()),
-        pa.field("is_quote", pa.bool_()),
-        pa.field("is_reply", pa.bool_()),
-        pa.field("in_reply_to_user_id", pa.int64()),
-        pa.field("in_reply_to_status_id", pa.int64()),
-        pa.field(
-            "quote",
-            pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})}),
-        ),
-        pa.field(
-            "rt", pa.struct({"id": pa.int64(), "user": pa.struct({"id": pa.int64()})})
-        ),
-        pa.field("tweet", pa.struct({"tokens": pa.list_(pa.string())})),
         pa.field("user.description_tokens", pa.list_(pa.string())),
         pa.field("user.name_tokens", pa.list_(pa.string())),
     ]
 )
+
+TWEET_DTYPES = pa.schema(TWEET_FIELDS_EXTENDED)
+TWEET_DTYPES_RAW = pa.schema(TWEET_FIELDS)
 
 
 def flatten_tweet(tweet):

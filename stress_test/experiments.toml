@@ -3,9 +3,8 @@
 [experiments.test]
 key = 'test'
 folder_pattern = '*'
-folder_start = '2022-01-27'
-folder_end = '2022-01-31'
-# folder_end = '2022-03-31'
+folder_start = '2022-01-01'
+folder_end = '2022-30-04'
 discussion_only = 1
 discussion_directed = 0
 

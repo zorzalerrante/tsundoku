@@ -28,19 +28,24 @@ def main(date, days, pattern, source_path):
     t = Timer()
     chronometer = []
     dates = []
+    tweets = []
     for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
         t.start()
         current_date = str(current_date.date())
 
-        project.import_date(current_date, pattern=pattern, source_path=source_path)
+        imported_tweets = project.import_date(
+            current_date, pattern=pattern, source_path=source_path
+        )
 
         current_timer = t.stop()
         chronometer.append(current_timer)
         dates.append(current_date)
+        tweets.append(imported_tweets)
         print(f"Succesfully imported {current_date} data in {current_timer} seconds!")
 
     logger.info("Chronometer: " + str(chronometer))
     logger.info("Chronometer dates: " + str(dates))
+    logger.info("Imported Tweets: " + str(tweets))
 
 
 if __name__ == "__main__":

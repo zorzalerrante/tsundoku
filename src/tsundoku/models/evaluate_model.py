@@ -1,6 +1,7 @@
 import copy
 import logging
 import os
+import re
 import click
 import dask
 import dask.dataframe as dd
@@ -12,6 +13,7 @@ from glob import glob
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
+from gensim.utils import deaccent
 
 from tsundoku.utils.files import read_toml
 from tsundoku.models.pipeline import evaluate, prepare_features
@@ -83,8 +85,10 @@ def main(experiment, group, n_splits):
         group_config = toml.load(f)
 
     # these are sorted by tweet count!
-    user_ids = dd.read_parquet(processed_path / "user.elem_ids.parquet").set_index(
-        "user.id"
+    user_ids = (
+        dd.read_parquet(processed_path / "user.elem_ids.parquet")
+        .set_index("user.id")
+        .compute()
     )
     logging.info(f"Total users: #{len(user_ids)}")
 
@@ -98,7 +102,9 @@ def main(experiment, group, n_splits):
         .compute()
         .set_index("user.id")
     )
-    valid_users = user_groups[user_groups["predicted_class"] != "noise"].index
+    valid_users = user_groups[
+        ~(user_groups["predicted_class"].isin(["noise", "undisclosed"]))
+    ].index
     user_ids = user_ids.loc[valid_users].sort_values("row_id")
     logging.info(f"Kept users for {group} prediction: #{len(user_ids)}")
 
@@ -108,16 +114,57 @@ def main(experiment, group, n_splits):
     #    del group_config['noise']
 
     labels = pd.DataFrame(
-        0, index=user_ids.index.compute(), columns=group_config.keys(), dtype=int
+        0, index=user_ids.index, columns=group_config.keys(), dtype=int
     )
+
+    def load_user_data():
+        return (
+            dd.read_parquet(processed_path / "user.unique.parquet")
+            .set_index("user.id")
+            .loc[user_ids.index]
+            .compute()
+        )
+
+    # if there are location patterns, tream them specially:
+    user_data = None
+    for key, meta in group_config.items():
+        group_re = None
+        try:
+            print(f'location patterns for {key}, {meta["location"]["patterns"]}')
+            group_re = re.compile("|".join(meta["location"]["patterns"]), re.IGNORECASE)
+        except KeyError:
+            print(f"no location patterns in {key}")
+            continue
+
+        if user_data is None:
+            user_data = load_user_data()
+            user_data["user.location"] = (
+                user_data["user.location"].fillna("").map(deaccent)
+            )
+
+        group_ids = user_data[user_data["user.location"].str.contains(group_re)].index
+
+        if group == "location":
+            # use these as account ids that cannot be modified (let's trust users)
+            if not "account_ids" in meta:
+                meta["account_ids"] = dict()
+
+            if not "known_users" in meta:
+                meta["account_ids"]["known_users"] = list(group_ids)
+            else:
+                meta["account_ids"]["known_users"].extend(group_ids)
+        else:
+            # use them as labels
+            labels[key].loc[group_ids] = 1
 
     xgb_parameters = experiment_config[group]["xgb"]
     pipeline_config = experiment_config[group]["pipeline"]
 
     X, labels, feature_names_all = prepare_features(
-        processed_path, group_config, user_ids.compute(), labels
+        processed_path, group_config, user_ids, labels
     )
 
+    print("Evaluating...")
     outputs = evaluate(
         processed_path,
         xgb_parameters,

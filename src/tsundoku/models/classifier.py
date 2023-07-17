@@ -81,9 +81,9 @@ class PartiallyLabeledXGB(object):
         F = X
 
         if self.calibrated_clf is not None:
-            return self.calibrated_clf.predict(F)
+            return self.label_encoder.inverse_transform(self.calibrated_clf.predict(F))
 
-        return self.xgb.predict(F)
+        return self.label_encoder.inverse_transform(self.xgb.predict(F))
 
     def predict_proba(self, X):
         F = X
@@ -93,14 +93,13 @@ class PartiallyLabeledXGB(object):
 
     def classify_and_report(self, y_test, X_test, output_dict=False):
         labeled_idx = np.arange(len(y_test))[pd.notnull(y_test)]
-        # print('# rows with label', len(labeled_idx))
+        print("# rows with label", len(labeled_idx))
         y_labeled = y_test[labeled_idx]
         X_labeled = X_test[labeled_idx]
         y_predicted = self.predict(X_labeled)
-
-        y_predicted = ["empathy" if y == 0 else "threat" for y in y_predicted]
-
-        return classification_report(y_labeled, y_predicted, output_dict=output_dict)
+        return classification_report(
+            y_labeled, y_predicted, output_dict=output_dict, zero_division=1
+        )
 
     def classify_and_label(self, X, min_probability, non_labeled_value=None):
         results = pd.DataFrame(
