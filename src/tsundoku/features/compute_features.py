@@ -19,9 +19,10 @@ from tsundoku.utils.timer import Timer
 
 
 @click.command()
-@click.option("--start_at", type=str, default="")
+@click.argument("date", type=str)  # format: YYYYMMDD
+@click.option("--days", default=1, type=int)
 @click.option("--overwrite", type=bool, default=False)
-def main(start_at, overwrite):
+def main(date, days, overwrite):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../interim).
     """
@@ -45,16 +46,14 @@ def main(start_at, overwrite):
     )
 
     t = Timer()
-    chronometer = []
+    chronometer_total = []
+    chronometer_compute_user_metrics = []
+    chronometer_compute_tweet_metrics = []
     dates = []
-    for tweet_path in source_folders:
-        t.start()
-        date = str(os.path.basename(tweet_path))
-
-        if start_at and date < start_at:
-            continue
-
-        target = Path(config["path"]["data"]) / "interim" / f"{date}"
+    for i, current_date in enumerate(pd.date_range(date, freq="1D", periods=days)):
+        current_date = str(current_date.date())
+        tweet_path = Path(config["path"]["data"]) / "raw" / f"{current_date}"
+        target = Path(config["path"]["data"]) / "interim" / f"{current_date}"
 
         if not target.exists():
             target.mkdir(parents=True)
@@ -67,7 +66,7 @@ def main(start_at, overwrite):
 
         target_files = glob(str(Path(tweet_path) / "*.parquet"))
 
-        non_empty_files = list(filter(lambda x: os.stat(x).st_size > 10, target_files))
+        non_empty_files = list(filter(lambda x: os.stat(x).st_size > 0, target_files))
 
         if not non_empty_files:
             logger.warning(f"{date} has no validfiles.")
@@ -79,23 +78,45 @@ def main(start_at, overwrite):
             logger.warning(f"{date} has no files")
             continue
 
-        logger.info(
-            f"{date} ({tweets.npartitions} partitions) -> computing user metrics with parquet files"
+        t.start()
+        logging.info(
+            f"{current_date} ({tweets.npartitions} partitions) -> computing user metrics"
         )
         compute_user_metrics(tweets, target, overwrite)
-        logger.info(
-            f"{date} ({tweets.npartitions} partitions) -> computing tweet metrics with parquet files"
+        compute_user_metrics_time = t.stop()
+        chronometer_compute_user_metrics.append(compute_user_metrics_time)
+
+        t.start()
+        logging.info(
+            f"{current_date} ({tweets.npartitions} partitions) -> computing tweet metrics"
         )
         compute_tweet_metrics(tweets, target, overwrite)
-        logger.info(f"{date} -> done! :D")
+        compute_tweet_metrics_time = t.stop()
+        chronometer_compute_tweet_metrics.append(compute_tweet_metrics_time)
 
-        current_timer = t.stop()
-        chronometer.append(current_timer)
-        dates.append(date)
-        print(f"Succesfully computed {date} data features in {current_timer} seconds!")
+        logging.info(f"{current_date} -> done! :D")
+        dates.append(current_date)
+        total_time = compute_user_metrics_time + compute_tweet_metrics_time
+        chronometer_total.append(total_time)
+        logging.info(f"{current_date} -> total time: {total_time}")
 
-    logger.info("Chronometer: " + str(chronometer))
-    logger.info("Chronometer dates: " + str(dates))
+    logging.info(f"total time: {sum(chronometer_total)}")
+    logging.info(
+        f"total time (compute_user_metrics): {sum(chronometer_compute_user_metrics)}"
+    )
+    logging.info(
+        f"total time (compute_tweet_metrics): {sum(chronometer_compute_tweet_metrics)}"
+    )
+    logging.info(f"total time: {sum(chronometer_total)}")
+
+    logging.info("Chronometer: " + str(chronometer_total))
+    logging.info(
+        "Chronometer (compute_user_metrics): " + str(chronometer_compute_user_metrics)
+    )
+    logging.info(
+        "Chronometer (compute_tweet_metrics): " + str(chronometer_compute_tweet_metrics)
+    )
+    logging.info("Dates: " + str(dates))
 
 
 def compute_user_metrics(tweets, target_path, overwrite):
@@ -112,7 +133,6 @@ def compute_user_metrics(tweets, target_path, overwrite):
     if overwrite or not (target_path / "user_name_vocabulary.parquet").exists():
         if users is None:
             users = dd.read_parquet(target_path / "unique_users.parquet")
-
         (
             users[["user.id", "user.name_tokens"]]
             .explode("user.name_tokens")
@@ -161,6 +181,19 @@ def compute_tweet_metrics(tweets, target_path, overwrite):
         tweets_per_user.columns = tweets_per_user.columns.astype(str)
         write_parquet(tweets_per_user, target_path / "tweets_per_user.parquet")
 
+    if overwrite or not (target_path / "tweets_list_per_user.parquet").exists():
+        tweets_list_per_user = (
+            tweets.drop_duplicates("id")
+            .groupby("user.id")["text"]
+            .agg(list)
+            .reset_index()
+            .compute()
+        )
+        tweets_list_per_user = tweets_list_per_user.rename(columns={"text": "tweets"})
+        write_parquet(
+            tweets_list_per_user, target_path / "tweets_list_per_user.parquet"
+        )
+
     tweet_vocabulary = None
 
     if overwrite or not (target_path / "tweet_vocabulary.parquet").exists():
@@ -182,18 +215,15 @@ def compute_tweet_metrics(tweets, target_path, overwrite):
         if tweet_vocabulary is None:
             tweet_vocabulary = dd.read_parquet(target_path / "tweet_vocabulary.parquet")
 
-        (
+        tweet_token_frequency = (
             tweet_vocabulary.groupby("token")
             .agg(total_frequency=("frequency", "sum"), total_users=("user.id", "count"))
             .reset_index()
-            .to_json(
-                target_path / "tweet_token_frequency.parquet",
-                compression="gzip",
-                orient="records",
-                lines=True,
-            )
         )
-        pq.write_table(tweet_vocabulary, target_path / "tweet_token_frequency.parquet")
+
+        write_parquet(
+            tweet_token_frequency, target_path / "tweet_token_frequency.parquet"
+        )
 
         tweet_vocabulary = None
 

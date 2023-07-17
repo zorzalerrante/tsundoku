@@ -21,7 +21,7 @@ from pyarrow import json
 from tsundoku.utils.files import read_list, write_parquet
 from tsundoku.utils.text import tokenize
 from tsundoku.utils.re import build_re_from_files
-from tsundoku.utils.tweets import TWEET_DTYPES
+from tsundoku.utils.tweets import TWEET_DTYPES, TWEET_DTYPES_RAW
 
 
 class TweetImporter(object):
@@ -84,7 +84,7 @@ class TweetImporter(object):
         return candidates
 
     def read_tweet_dataframe(self, filename):
-        adf = pd.read_parquet(filename, engine="pyarrow", use_nullable_dtypes=True)
+        adf = pd.read_parquet(filename, engine="pyarrow")
 
         if len(adf.columns) != 0:
             return self.filter_dataframe(adf)
@@ -250,7 +250,8 @@ class TweetImporter(object):
 
         self.logger.info(f"#files to transform: {len(task_files)}")
 
-        self.import_parquet_files(task_files, target_path)
+        read_tweets = self.import_parquet_files(task_files, target_path)
+        return read_tweets
 
     def import_parquet_files(self, file_names, target_path):
         if not target_path.exists():
@@ -265,6 +266,7 @@ class TweetImporter(object):
         ]
         read_tweets = sum(dask.compute(*tasks))
         self.logger.info(f"done! imported {read_tweets} tweets from {len(file_names)}")
+        return read_tweets
 
     def _parse_files_to_parquet(self, i, filename, target_path):
         try:
@@ -318,7 +320,10 @@ class TweetImporter(object):
 
         parquet_path = self.data_path() / "raw" / date_str
 
-        self.import_files(task_files, parquet_path, file_prefix="tweets.partition")
+        imported_tweets = self.import_files(
+            task_files, parquet_path, file_prefix="tweets.partition"
+        )
+        return imported_tweets
 
     def import_files(self, file_names, target_path, file_prefix=None):
         if not target_path.exists():
@@ -335,6 +340,7 @@ class TweetImporter(object):
         ]
         read_tweets = sum(dask.compute(*tasks))
         self.logger.info(f"done! imported {read_tweets} tweets")
+        return read_tweets
 
     def _read_parquet_file(self, i, filename, target_path, file_prefix=None):
         df = self.read_tweet_dataframe(filename)
@@ -344,5 +350,11 @@ class TweetImporter(object):
         else:
             target_file = target_path / f"{Path(filename).stem}.{i}.parquet"
 
+        df["tweet.tokens"] = df["text"].map(self.tokenize)
+        df["user.description_tokens"] = df["user.description"].map(self.tokenize)
+        df["user.name_tokens"] = df["user.name"].map(self.tokenize)
+        # we transform dates from format Sat Jan 01 11:27:55 +0000 2022 to datetime object
+        df["created_at"] = pd.to_datetime(df["created_at"])
+        df["user.created_at"] = pd.to_datetime(df["user.created_at"])
         write_parquet(df, target_file)
         return len(df)
