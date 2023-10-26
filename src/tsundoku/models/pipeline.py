@@ -238,10 +238,15 @@ def prepare_features(
         token_id="node_id",
     )
 
-    user_embeddings_matrix, user_embeddings_features = process_embedding_matrix(
-        path,
-        "users.all.embeddings",
-    )
+    try:
+        user_embeddings_matrix, user_embeddings_features = process_embedding_matrix(
+            path,
+            "users.all.embeddings",
+        )
+    except Exception as e:
+        print(e)
+        user_embeddings_matrix = None
+        user_embeddings_features = None
     # remove contradicting labels
     # keep only labels with one class only
     class_label_counts = labels[labels.values > 0].astype(bool).sum(axis=1)
@@ -304,8 +309,7 @@ def prepare_features(
     replies_per_group = network_groups(reply_features)
     quotes_per_group = network_groups(quote_features)
 
-    feature_names_all = pd.concat(
-        [
+    feature_names = [
             # domains
             domain_feature_names[["type", "token"]],
             profile_domain_feature_names[["type", "token"]],
@@ -320,17 +324,18 @@ def prepare_features(
             rt_feature_names[["type", "token"]],
             reply_feature_names[["type", "token"]],
             quote_feature_names[["type", "token"]],
-            # user embeddings
-            user_embeddings_features,
             # rts per group
             pd.DataFrame({"type": "rt_group", "token": config.keys()}),
             pd.DataFrame({"type": "mention_group", "token": config.keys()}),
             pd.DataFrame({"type": "quote_group", "token": config.keys()}),
         ]
-    ).reset_index(drop=True)
+    
+    if user_embeddings_features is not None:
+        feature_names.append(user_embeddings_features)
 
-    X = hstack(
-        [
+    feature_names_all = pd.concat(feature_names).reset_index(drop=True)
+
+    feature_matrices = [
             domain_features,
             profile_domain_features,
             profile_tld_features,
@@ -340,13 +345,15 @@ def prepare_features(
             rt_features,
             reply_features,
             quote_features,
-            user_embeddings_matrix,
             rts_per_group,
             replies_per_group,
             quotes_per_group,
-        ],
-        format="csr",
-    )
+        ]
+    
+    if user_embeddings_matrix is not None:
+        feature_matrices.append(user_embeddings_matrix)
+
+    X = hstack(feature_matrices, format="csr")
 
     print(X.shape)
 

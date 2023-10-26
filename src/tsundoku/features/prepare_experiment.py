@@ -1,8 +1,7 @@
 import toml
 import pandas as pd
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
+
 import dask.dataframe as dd
 import dask
 import click
@@ -10,7 +9,6 @@ import copy
 import logging
 import os
 import matplotlib
-import tqdm
 
 from glob import glob
 from multiprocessing.pool import ThreadPool
@@ -24,16 +22,6 @@ from tsundoku.utils.urls import get_domain
 from tsundoku.utils.dtm import build_vocabulary, tokens_to_document_term_matrix
 from tsundoku.utils.vocabulary import filter_vocabulary
 from tsundoku.utils.timer import Timer
-
-# BERT TOKENIZER FOR WORD EMBEDDINGS
-from transformers import BertTokenizer, BertModel
-import torch
-from torch.utils.data import Dataset
-
-
-PRE_TRAINED_MODEL_NAME = "dccuchile/bert-base-spanish-wwm-cased"
-BETOTokenizer = BertTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME)
-BETOModel = BertModel.from_pretrained(PRE_TRAINED_MODEL_NAME, output_hidden_states=True)
 
 matplotlib.use("agg")
 
@@ -159,6 +147,8 @@ def main(experiment, overwrite):
         processed_path,
         discussion_only=bool(experimental_settings.get("discussion_only", False)),
         directed=bool(experimental_settings.get("discussion_directed", False)),
+        min_edge_weight=int(experiment_config["thresholds"].get("edge_weight", 1)),
+        min_total_degree=int(experiment_config["thresholds"].get("total_degree", 1)),
         overwrite=overwrite,
     )
     current_timer = t.stop()
@@ -215,13 +205,6 @@ def main(experiment, overwrite):
     chronometer.append(current_timer)
     process_names.append(f"user_descriptions_vocabulary_matrix")
 
-    # users embeddings
-    t.start()
-    group_user_tweets_list(elem_to_id, data_paths, processed_path, overwrite=overwrite)
-    current_timer = t.stop()
-    chronometer.append(current_timer)
-    process_names.append(f"users_embeddings")
-
     # user-tweet matrix
 
     t.start()
@@ -248,8 +231,6 @@ def main(experiment, overwrite):
         ("retweet", "rt.user.id"),
     ):
         t.start()
-        # interaction_dd = dd_from_paths([d / f'{int_name}_edgelist.json.gz' for d in data_paths])
-        # group_user_interactions(interaction_dd, key_column, int_column, int_name, processed_path)
         build_network(
             int_name, int_column, elem_to_id, processed_path, overwrite=overwrite
         )
@@ -316,95 +297,14 @@ def count_user_tweets(data_paths, destination_path, overwrite=False):
     logging.info(f"user tweet counts -> {count_target}")
 
 
-def group_user_tweets_list(elem_to_id, data_paths, destination_path, overwrite=False):
-    user_embedding_target = destination_path / "users.all.embeddings.matrix.npz"
-
-    if not overwrite and user_embedding_target.exists():
-        logging.info("tweets lists by user were computed! skipping.")
-        return
-
-    def combine_lists(lst):
-        combined_lst = []
-        for sublist in lst:
-            combined_lst.extend(sublist)
-        return combined_lst
-
-    tweets_list = (
-        dd_from_parquet_paths([d / "tweets_list_per_user.parquet" for d in data_paths])
-        .groupby("user.id")["tweets"]
-        .apply(combine_lists)  # , meta={"user.id": "int", "tweets": "object"}
-        .reset_index()
-        .compute()
-    )
-
-    embeddings_list = []
-    user_id_list = []
-    for index, tweet_list in tqdm.tqdm(
-        tweets_list.iterrows(), total=tweets_list.shape[0]
-    ):
-        tweet_list_embedding = []
-        for tweet in tweet_list["tweets"]:
-            # Tokenize our sentence with the BERT tokenizer.
-            tokenized_text = BETOTokenizer.tokenize(tweet)
-            # Map the token strings to their vocabulary indeces.
-            indexed_tokens = BETOTokenizer.convert_tokens_to_ids(tokenized_text)
-            # Display the words with their indeces.
-            segments_ids = [1] * len(tokenized_text)
-
-            tokens_tensor = torch.tensor([indexed_tokens])
-            segments_tensors = torch.tensor([segments_ids])
-
-            BETOModel.eval()
-            with torch.no_grad():
-                outputs = BETOModel(tokens_tensor, segments_tensors)
-                hidden_states = outputs[2]
-            token_embeddings = torch.stack(hidden_states, dim=0)
-            token_embeddings = torch.squeeze(token_embeddings, dim=1)
-            token_embeddings = token_embeddings.permute(1, 0, 2)
-
-            # `token_vecs` is a tensor with shape [n x 768]
-            token_vecs = hidden_states[-2][0]
-            # Calculate the average of all n token vectors.
-            sentence_embedding = torch.mean(token_vecs, dim=0)
-
-            token_vecs_sum = []
-            # For each token in the sentence...
-            for token in token_embeddings:
-                # Sum the vectors from the last four layers.
-                sum_vec = torch.sum(token[-4:], dim=0)
-                # Use `sum_vec` to represent `token`.
-                token_vecs_sum.append(sum_vec)
-            # `token_vecs` is a tensor with shape [n x 768]
-            token_vecs = hidden_states[-2][0]
-
-            # Calculate the average of all n token vectors.
-            sentence_embedding = torch.mean(token_vecs, dim=0)
-            tweet_list_embedding.append(sentence_embedding)
-
-        tweet_list_embedding = torch.stack(tweet_list_embedding)
-        user_embedding = torch.mean(tweet_list_embedding, dim=0)
-        embeddings_list.append(user_embedding.numpy())
-        user_id_list.append(tweet_list["user.id"])
-
-    n = len(embeddings_list[0])
-    user_embeddings_matrix = dok_matrix(
-        (max(elem_to_id.values()) + 1, n + 1), dtype=np.float32
-    )
-
-    for user_id, user_embedding in zip(user_id_list, embeddings_list):
-        if not user_id in elem_to_id:
-            continue
-        matrix_id = elem_to_id[user_id]
-        user_embeddings_matrix[matrix_id, :n] = user_embedding
-
-    user_embeddings_matrix = user_embeddings_matrix.tocsr()
-    save_npz(user_embedding_target, user_embeddings_matrix)
-
-    logging.info(f"users.embeddings matrix -> {user_embedding_target}")
-
-
 def group_users(
-    data_paths, processed_path, discussion_only=True, directed=False, overwrite=False
+    data_paths,
+    processed_path,
+    discussion_only=True,
+    directed=False,
+    min_edge_weight=1,
+    min_total_degree=1,
+    overwrite=False,
 ):
     target_file = processed_path / "user.unique.parquet"
     elem_ids_target = processed_path / "user.elem_ids.parquet"
@@ -421,7 +321,12 @@ def group_users(
 
     if discussion_only:
         logging.info(f"total #users before filtering by discussion: {len(users)}")
-        nodes_in_largest = find_nodes_in_discussion(processed_path, directed=directed)
+        nodes_in_largest = find_nodes_in_discussion(
+            processed_path,
+            directed=directed,
+            min_edge_weight=min_edge_weight,
+            min_total_degree=min_total_degree,
+        )
         users = users[users["user.id"].isin(nodes_in_largest)]
 
     logging.info(f"total #users: {len(users)}")
@@ -598,7 +503,13 @@ def build_user_tweets_term_matrix(
         logging.info(f"user.tweet_tokens matrix -> {tweet_matrix_target}")
 
 
-def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
+def find_nodes_in_discussion(
+    processed_path,
+    directed=False,
+    min_edge_weight=1,
+    min_total_degree=1,
+    overwrite=False,
+):
     layers = pd.DataFrame(columns=["source.id", "target.id"])
 
     for layer_name, layer_column in (
@@ -620,7 +531,7 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
     layers["weight"] = layers[["retweet", "reply", "quote"]].sum(axis=1)
 
     network = Network.from_edgelist(
-        layers,
+        layers[layers["weight"] >= min_edge_weight],
         source="source.id",
         target="target.id",
         weight="weight",
@@ -629,7 +540,22 @@ def find_nodes_in_discussion(processed_path, directed=False, overwrite=False):
 
     nodes_in_largest = list(network.graph.vertex_properties["elem_id"])
 
-    return nodes_in_largest
+    logging.info(f"total #nodes in largest component: {len(nodes_in_largest)}")
+
+    node_degree = network.estimate_node_degree("total")
+    filtered_nodes = [
+        node_id
+        for degree, node_id in zip(
+            node_degree, network.graph.vertex_properties["elem_id"]
+        )
+        if degree >= min_total_degree
+    ]
+
+    logging.info(
+        f"total #nodes after filtering by total degree (min={min_total_degree}): {len(filtered_nodes)}"
+    )
+
+    return filtered_nodes
 
 
 def build_network(
