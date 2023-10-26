@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import sys
 import click
 import dask
 import dask.dataframe as dd
@@ -88,6 +89,18 @@ def main(experiment, group):
 
     with open(Path(config["path"]["config"]) / "groups" / f"{group_key}.toml") as f:
         group_config = toml.load(f)
+
+    group_annotations_file = Path(config["path"]["config"]) / "groups" / f"{group_key}.annotations.csv"
+
+    if group_annotations_file.exists():
+        logging.info('Reading annotations...')
+        group_annotations = pd.read_csv(group_annotations_file)
+        
+        for key in group_config.keys():
+            annotated_user_ids = group_annotations[group_annotations['class'] == key]
+            if not annotated_user_ids.empty:
+                logging.info(f'# of annotated "{key}" accounts: {len(annotated_user_ids)}')
+                group_config[key]['account_ids']['known_users'].extend(annotated_user_ids['user.id'].unique()) 
 
     user_ids = (
         dd.read_parquet(processed_path / "user.elem_ids.parquet")
