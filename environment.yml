@@ -1,8 +1,7 @@
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python=3.8
+  - python>=3.8
   - configparser
   - ipykernel
   - pip
@@ -13,7 +12,7 @@ dependencies:
   - cytoolz
   - python-rapidjson
   - gensim
-  - matplotlib=3.4.3
+  - matplotlib==3.7.1
   - seaborn
   - umap-learn
   - pyarrow
@@ -34,14 +33,17 @@ dependencies:
   - descartes
   - scikit-learn
   - nltk
+  - KDEpy
+  - xlrd
+  - contextily
   - pip:
     - lru-dict
     - pytz
     - ftfy
     - emoji
-    - scattertext
     - adjustText
     - toml
+    - scattertext
     - powerlaw
     - shifterator
     - git+https://github.com/zorzalerrante/scikit-fusion
@@ -49,11 +51,9 @@ dependencies:
     - pymunk
     - emoji
     - bezier
-    - KDEpy
-    - contextily
     - matplotlib-scalebar
-    - xlrd
     - python-dotenv
     - tweepy
     - requests
     - aiohttp
+    - pyahocorasick
