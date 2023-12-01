@@ -2,17 +2,23 @@
 name = "Example Project"
 
 [project.path]
-config = "/mnt/c/Users/nicol/Escritorio/Tsundoku/tsundoku/example_project"
-data = "/mnt/c/Users/nicol/Escritorio/Tsundoku/data/tweets_data/2022_flattened"
+config = "./example_project"
+data = "./example_project/data"
     
 [project.content]
 term_files = ["keywords.txt"]
 accepted_lang = ["es"]
 timezone = "America/Santiago"
+account_ids = [
+    3090538753, #oimchile
+    396796970, #sjm
+    978329066788007937, # asovenchile
+    3938222837, # migranteschile
+]
 
 [project.content.user_matrix]
 stopwords_file = "stopwords.txt"
-lru_size = 500
+lru_size = 1000
 
 [project.environment]
-n_jobs = 2
+n_jobs = 8
