@@ -25,7 +25,8 @@ from tsundoku.utils.timer import Timer
 @click.command()
 @click.option("--experiment", type=str, default="full")
 @click.option("--group", type=str, default="relevance")
-def main(experiment, group):
+@click.option("--max_group_labels", type=int, default=-1)
+def main(experiment, group, max_group_labels):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed/parquet)
     """
@@ -264,6 +265,7 @@ def main(experiment, group):
         eval_fraction=pipeline_config["eval_fraction"],
         threshold_offset_factor=pipeline_config["threshold_offset_factor"],
         skip_numeric_tokens=skip_numeric_tokens,
+        max_group_labels=max_group_labels
     )
 
     current_timer = t.stop()

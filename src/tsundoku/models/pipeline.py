@@ -52,6 +52,8 @@ def search_tokens(
         else:
             group_user_ids[group] = np.where(group_flag > 0)[0]
 
+        
+
         to_remove_feature_ids.extend(np.asarray(group_tokens["token_id"].values))
 
     feature_ids = vocabulary[~vocabulary["token_id"].isin(to_remove_feature_ids)]
@@ -121,6 +123,7 @@ def prepare_features(
     allowed_user_ids=None,
     tf_idf=False,
     skip_numeric_tokens=False,
+    max_group_labels=-1
 ):
     print("preparing features")
     labels, domain_features, domain_feature_names, domain_labeled_ids = process_matrix(
@@ -254,6 +257,22 @@ def prepare_features(
 
     print(labels.sum(axis=0))
 
+    if max_group_labels > 0:
+        print(f'max group labels = {max_group_labels}')
+        class_label_total_count = labels[labels.values > 0].sum(axis=0)
+        print(class_label_total_count)
+
+        for key in config.keys():
+            if class_label_total_count[key] > max_group_labels:
+                print(f'class {key} has more labeled accounts')
+                subset_ids = labels[labels[key] > 0].sample(max_group_labels).index
+                print(len(subset_ids))
+                labels[key] = 0
+                labels[key].loc[subset_ids] = 1
+
+
+
+
     # add manually annotated accounts from config
     for key, values in config.items():
         if not "account_ids" in values:
@@ -355,15 +374,29 @@ def prepare_features(
 
     X = hstack(feature_matrices, format="csr")
 
-    print(X.shape)
+    print(f'Feature matrix size = {X.shape}')
 
     valid_X = X[user_ids.loc[labels.index.values]["row_id"].values, :]
+
+    print(f'Valid feature matrix size = {valid_X.shape}')
+    print(to_array(valid_X.sum(axis=0)))
+
+    feature_names_all['matrix_sum'] = to_array(valid_X.sum(axis=0))
+    print(feature_names_all)
+    print(feature_names_all.describe())
+
+    nonzero_features = feature_names_all[feature_names_all['matrix_sum'] > 0]
+    
+    nonzero_valid_X = valid_X[:,nonzero_features.index.values]
+    print(f'Non-zero feature matrix size = {nonzero_valid_X.shape}')
+    nonzero_features = nonzero_features.reset_index(drop=True)
+    
 
     single_labels = labels.idxmax(axis=1)
     single_labels[labels.sum(axis=1) == 0] = None
     print(single_labels.shape, single_labels.value_counts())
 
-    return valid_X, single_labels, feature_names_all
+    return nonzero_valid_X, single_labels, nonzero_features
 
 
 def evaluate(
@@ -462,6 +495,7 @@ def classifier_pipeline(
     eval_fraction=0.15,
     threshold_offset_factor=0.1,
     skip_numeric_tokens=False,
+    max_group_labels=-1
 ):
     X, single_labels, feature_names_all = prepare_features(
         path,
@@ -470,6 +504,7 @@ def classifier_pipeline(
         labels,
         allowed_user_ids=allowed_user_ids,
         skip_numeric_tokens=skip_numeric_tokens,
+        max_group_labels=max_group_labels
     )
     clf, predictions = train_and_run_classifier(
         xgb_parameters,
