@@ -1,27 +1,25 @@
 import logging
-import os
 import re
 import zlib
-import ahocorasick
-import dask
-import pandas as pd
-import pytz
-import toml
-import pyarrow as pa
-import pyarrow.parquet as pq
-import dask.dataframe as dd
-
-from lru import LRU
-from cytoolz import pluck
+from functools import lru_cache
 from itertools import chain
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
+import ahocorasick
+import dask
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytz
+import toml
+from cytoolz import pluck
 from pyarrow import json
+
+from tsundoku.utils.dates import twitter_date_format
 from tsundoku.utils.files import read_list, write_parquet
-from tsundoku.utils.text import tokenize
 from tsundoku.utils.re import build_re_from_files
-from tsundoku.utils.tweets import TWEET_DTYPES, TWEET_DTYPES_RAW
+from tsundoku.utils.text import tokenize
 
 
 class TweetImporter(object):
@@ -35,6 +33,7 @@ class TweetImporter(object):
 
         logging.info(self.config)
 
+        self.configure_accounts()
         self.configure_locations()
         self.configure_language()
         self.configure_terms()
@@ -59,14 +58,26 @@ class TweetImporter(object):
                 df["user.location"].str.contains(self.location["blacklist"]) == True
             )
 
-        candidates = df[flag]
+        if self.account_ids:
+            flag = flag | df["user.id"].isin(self.account_ids)
+
+        candidates = df[flag].assign(
+            tmpwhitelisted=lambda x: x["user.id"].isin(self.account_ids)
+        )
         # self.logger.info(f"Location filtering: {len(candidates)} from {len(df)} tweets")
 
         if len(self.automaton):
             result = []
             for tuple in candidates.itertuples():
+                # allowed users
+                if getattr(tuple, "tmpwhitelisted"):
+                    result.append(True)
+                    continue
+
                 # print(getattr(tuple, 'text'))
-                findings = set(pluck(1, self.automaton.iter(getattr(tuple, "text"))))
+                findings = set(
+                    pluck(1, self.automaton.iter(getattr(tuple, "text").lower()))
+                )
                 # print(findings)
 
                 if self.terms["patterns"] is not None:
@@ -81,7 +92,7 @@ class TweetImporter(object):
 
         # self.logger.info(f"Keyword filtering: {len(candidates)} from {len(df)} tweets")
 
-        return candidates
+        return candidates.drop("tmpwhitelisted", axis=1)
 
     def read_tweet_dataframe(self, filename):
         adf = pd.read_parquet(filename, engine="pyarrow")
@@ -90,6 +101,9 @@ class TweetImporter(object):
             return self.filter_dataframe(adf)
 
         return adf
+
+    def configure_accounts(self):
+        self.account_ids = set(self.config["content"].get("account_ids", []))
 
     def configure_locations(self):
         location_config = self.config["content"].get("location", {})
@@ -143,7 +157,7 @@ class TweetImporter(object):
                 terms = read_list(filename)
                 self.terms["patterns"].extend(terms)
                 for term in terms:
-                    self.automaton.add_word(term, "search-term")
+                    self.automaton.add_word(term.strip(), "search-term")
                 self.logger.info(f"read keywords from {filename}: {terms}")
         else:
             self.logger.warning("no keyword terms used")
@@ -198,19 +212,11 @@ class TweetImporter(object):
             stopwords = set(read_list(stopwords_file))
             self.logger.info(f"#stopwords: {len(stopwords)}")
 
-        token_cache = LRU(dtm_config.get("lru_size", 50))
+        @lru_cache(maxsize=dtm_config.get("lru_size", 50))
+        def _tokenize(x):
+            return tokenize(x, ngram_range=ngram_range, stopwords=stopwords)
 
-        def lru_tokenize(x):
-            if x in token_cache:
-                return token_cache[x]
-
-            result = tokenize(x, ngram_range=ngram_range, stopwords=stopwords)
-
-            token_cache[x] = result
-
-            return result
-
-        self.tokenize = lru_tokenize
+        self.tokenize = _tokenize
 
     def data_path(self):
         return Path(self.config["path"].get("data"))
@@ -354,7 +360,9 @@ class TweetImporter(object):
         df["user.description_tokens"] = df["user.description"].map(self.tokenize)
         df["user.name_tokens"] = df["user.name"].map(self.tokenize)
         # we transform dates from format Sat Jan 01 11:27:55 +0000 2022 to datetime object
-        df["created_at"] = pd.to_datetime(df["created_at"])
-        df["user.created_at"] = pd.to_datetime(df["user.created_at"])
+        df["created_at"] = pd.to_datetime(df["created_at"], format=twitter_date_format)
+        df["user.created_at"] = pd.to_datetime(
+            df["user.created_at"], format=twitter_date_format
+        )
         write_parquet(df, target_file)
         return len(df)
