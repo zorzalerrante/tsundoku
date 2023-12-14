@@ -2,7 +2,6 @@
 title = 'Empathy'
 order = ['empathy', 'undisclosed', 'threat']
 undisclosed_title = 'Indecisos(as)/Sin Postura Explícita'
-threshold = 0.3 # low value to avoid applying the threshold
 
 
 [empathy.tweet_tokens]
@@ -337,6 +336,12 @@ known_users = [
     134347332 , # aandremarquez
     939106239627382788, #ChumiVicuna
     1668147889, #christianprez18
+    171619651, # lafundacionsol
+    73981088, # gabrielboric
+    104020962, # KarolCariola
+    338689270, # Jaime_Bassa
+    141273706, # LuciaDammert
+    146542753, # danieljadue
 ]
 
 [empathy.domain]
@@ -676,5 +681,6 @@ known_users = [
     2827278610, #Español AlbertoPugilato
     2550559028, #Español nacionalista
     798194510, #andreschellew1	
+    170856264, # Sajubare
     
 ]

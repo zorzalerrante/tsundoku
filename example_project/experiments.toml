@@ -1,14 +1,54 @@
 [experiments]
 
-[experiments.test]
-key = 'test'
+[experiments.social_outburst]
+key = 'social_outburst'
 folder_pattern = '*'
-folder_start = '2022-01-25'
-folder_end = '2022-01-31'
+folder_start = '2019-10-18'
+folder_end = '2020-03-18'
 discussion_only = 1
 discussion_directed = 0
 
-[experiments.test.topic_modeling]
+[experiments.covid_1]
+key = 'covid_1'
+folder_pattern = '*'
+folder_start = '2020-03-19'
+folder_end = '2020-10-31'
+discussion_only = 1
+discussion_directed = 0
+
+[experiments.covid_2]
+key = 'covid_2'
+folder_pattern = '*'
+folder_start = '2020-11-01'
+folder_end = '2021-02-28'
+discussion_only = 1
+discussion_directed = 0
+
+[experiments.covid_3]
+key = 'covid_3'
+folder_pattern = '*'
+folder_start = '2021-03-01'
+folder_end = '2021-09-30'
+discussion_only = 1
+discussion_directed = 0
+
+[experiments.covid_4]
+key = 'covid_4'
+folder_pattern = '*'
+folder_start = '2021-10-01'
+folder_end = '2022-02-28'
+discussion_only = 1
+discussion_directed = 0
+
+[experiments.propuesta_constitucional]
+key = 'propuesta_constitucional'
+folder_pattern = '*'
+folder_start = '2022-03-01'
+folder_end = '2022-09-04'
+discussion_only = 1
+discussion_directed = 0
+
+[experiments.social_outburst.topic_modeling]
 n_topics = 200
 min_tweets = 10
 max_tweets_quantile = 0.98
@@ -20,63 +60,65 @@ alpha = 'asymmetric'
 
 
 [thresholds]
-name_tokens = 50
-description_tokens = 50
-tweet_tokens = 50
-tweet_domains = 50
-profile_domains = 30
+name_tokens = 250
+description_tokens = 500
+tweet_tokens = 1000
+tweet_domains = 100
+profile_domains = 50
 profile_tlds = 50
-edge_weight = 3
+edge_weight = 1
+total_degree = 2
 
 [relevance]
+order = ['relevant', 'undisclosed', 'noise']
 
 [relevance.xgb]
-learning_rate = 0.125
-max_depth = 2
-subsample = 0.75
-colsample = 0.75
-n_estimators = 300
+learning_rate = 0.2
+max_depth = 7
+subsample = 0.95
+n_estimators = 250
 max_delta_step = 1
-n_jobs = 2
-seed = 42
+n_jobs = 8
+random_state = 42
 objective = 'binary:logistic'
 
+
 [relevance.pipeline]
-early_stopping_rounds = 15
+early_stopping_rounds = 10
 eval_fraction = 0.05
-threshold_offset_factor = 0.2
+threshold_offset_factor = 0.15
 
 
 [stance]
+order = ['empathy', 'undisclosed', 'threat']
 
 [stance.xgb]
-learning_rate = 0.15
+learning_rate = 0.175
 max_depth = 3
-subsample = 1.0
-colsample = 1.0
-n_estimators = 400
+subsample = 0.95
+n_estimators = 250
 max_delta_step = 1
-n_jobs = 2
-seed = 42
+n_jobs = 8
+random_state = 42
 objective = 'binary:logistic'
 
 [stance.pipeline]
 early_stopping_rounds = 10
-eval_fraction = 0.1
-threshold_offset_factor = 0.05
+eval_fraction = 0.05
+threshold_offset_factor = 0.15
 
 
 [person]
+order = ['male', 'female', 'institutional', 'undisclosed']
 
 [person.xgb]
-learning_rate = 0.15
+learning_rate = 0.175
 max_depth = 3
-subsample = 0.9
-colsample = 0.9
+subsample = 0.95
 n_estimators = 250
 max_delta_step = 1
 n_jobs = 2
-seed = 42
+random_state = 42
 objective = 'multi:softmax'
 
 [person.pipeline]
@@ -88,13 +130,12 @@ threshold_offset_factor = 0.2
 
 [location.xgb]
 learning_rate = 0.15
-max_depth = 3
-subsample = 1.0
-colsample = 1.0
+max_depth = 4
+subsample = 0.95
 n_estimators = 300
 max_delta_step = 1
 n_jobs = 2
-seed = 42
+random_state = 42
 objective = 'multi:softmax'
 
 [location.pipeline]

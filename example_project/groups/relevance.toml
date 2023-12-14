@@ -5,7 +5,7 @@ title = 'Relevant'
 must_have = ['🇨🇱']
 
 [relevant.description_token]
-must_have = ['chileno', 'chilena', '🇨🇱']
+must_have = ['chileno', 'chilena', '🇨🇱', 'mapuche']
 
 [relevant.location]
 patterns = ['chile', '🇨🇱']
@@ -15,7 +15,10 @@ must_have = ['cl']
 
 [relevant.tweet_tokens]
 must_have = [
-    '#chile',
+    #'crisis', 
+    'migración', 'inmigración', 'migrante', 'migrantes', 'inmigrante', 'inmigrantes', 'extranjero', 'extranjera', 'extranjeros', 'extranjeras',
+    # otras que teníamos de antes
+    '#caravanamigrante', '#chile',
     '#Chile',
     '@sebastianpinera',
     '@gobiernodechile',
@@ -68,17 +71,16 @@ must_have = [
     'venezolanas',
     'promigrante',
     '🇨🇱',
+    'chilezuela'
 ]
 
 [relevant.account_ids]
 known_users = [
     3090538753, #oimchile
     396796970, #sjm
-    13623532, #Piñera
-    114834301, #Mañalich
-    795381833684885504, #Min. Paris
-    1568927635, #Martorell
-    2496588486, #Paula Daza
+    3222731, # latercera
+    978329066788007937, # asovenchile
+    3938222837, # migranteschile
 ]
 
 [noise]
@@ -307,6 +309,25 @@ must_have = [
     'vasco',
     'malagueño',
     'malagueña',
+    '#siguemeytesigovox',
+    'kirchnerista',
+    '@voluntadpopular',
+    '#vox',
+    '#nsb',
+    '#honduras',
+    '#nicaragua',
+    '#opcdmx',
+    '#redamlo',
+    'uribista',
+    'antiuribista',
+    'tucumán',
+    '@ahorapodemos',
+    'galega',
+    'galego',
+    'catalán',
+    'catalana',
+    'sandinista',
+    '#cuba'
 ]
 
 [noise.profile_domain]
@@ -342,6 +363,7 @@ must_have = [
     'org.gt',
     'org.co',
     'com.uy',
+    'voxespana.es'
 ]
 
 [noise.profile_tld]
@@ -361,6 +383,7 @@ must_have = [
     'py',
     'pr',
     'rd',
+    've'
 ]
 
 [noise.location]
@@ -435,6 +458,29 @@ patterns = [
     'vallarta',
     'galiza',
     'almería',
+    'canarias',
+    'mar del plata',
+    'calobre',
+    'panamá',
+    'spain',
+    'cuba',
+    'gerona',
+    'girona',
+    'andalucía',
+    'melilla',
+    'valencia',
+    'cataluña',
+    'barcelona',
+    'hospitalet',
+    'granada',
+    'asturias',
+    'sevilla',
+    'quito',
+    'alicante',
+    'galicia',
+    'guayaquil',
+    'badalona',
+    'murcia'
 ]
 
 [noise.domain]
@@ -718,10 +764,97 @@ must_have = [
     'minutoespana.com',
     'espresso.repubblica.it',
     'themexico.news',
+    'cibercuba.com',
+    'vozpopuli.com',
+    'alyaoum24.com',
+    'nuevatribuna.es',
+    'albertonews.com',
+    'nzz.ch',
+    'johnackerman.mx',
+    'confirmado.net',
+    'mazo4f.com',
+    'htv.mx',
+    'link.aiven.org',
+    'elpais.com.co',
+    'noticiasrcn.com',
+    'abc.es',
+    'montevideo.com.uy',
+    'nytimes.com',
+    'infobae.com',
+    'europapress.es',
+    'newtral.es',
+    'abc.es',
+    'elpueblodeceuta.es',
+    'fenixx.news',
+    'comunidad.madrid',
+    'elplural.com',
+    'euskalnews.com',
+    'dallasnews.com',
+    'elfarodeceuta.es',
+    'bellacaledonia.org.uk',
+    'eldiario.es',
+    'publico.es',
+    'lanaciondigital.es',
+    'leparisien.fr',
+    'climatica.lamarea.com',
+    'sptnkne.ws',
+    'europe.infowars.com',
+    'voxnews.info',
+    'eldia.es',
+    'hrld.us',
+    'noticias24.com',
+    'niusdiario.es',
+    'laopiniondemurcia.es',
+    'elindependiente.com',
+    'frontnieuws.com',
+    'diariodeavisos.elespanol.com',
+    'espanaesvoz.es',
+    'oxfamintermon.org',
+    'espana.abc.es',
+    'laopinion.com',
+    'noticiaexpreso.com',
+    'lavozdealmeria.com',
+    'maspalomasahora.com',
+    'eldiestro.es',
+    'estadodealarmatv.es',
+    'noticiassin.com',
+    'diariodemexico.com',
+    'againstthetide.tv',
+    'megachurch.pl',
+    'corruptometro.org',
+    'jussemper.org',
+    'podermigrante.es',
+    'aristeguinoticias.com',
+    'programa.electoral.vox.lastnews.es',
+    'h50policia.es',
+    'posmodernia.com',
+    'theobjective.com',
+    'vepresidente.com',
+    'laretaguardia.com',
+    'sorianoticias.com',
+    'diariosur.es',
+    'laprovincia.es',
+    'elliberal.com',
+    'impactovenezuela.com',
+    'mipuntodevista.com.mx',
+    'clubjuridico.com',
+    'nuestraespana.com',
+    'nortegrancanaria.com',
+    'ecsaharaui.com',
+    'okdiar.io',
+    'eltiempolatino.com',
+    'impactolatino.com',
+    'departamento19.hn',
+    'fronteraviva.com',
+    'cronicaglobal.elespanol.com',
+    'eldebate.com',
+    'noticias.vox.lastnews.es',
+    'elconfidencialdigital.com'
 ]
 
 [noise.tweet_tokens]
 must_have = [
+    '@cubanos_crisis',
     'españoles',
     '@guardiacivil',
     '#voxextremanecesidad',
@@ -1151,6 +1284,104 @@ must_have = [
     'marroquíes',
     'mena',
     'menas',
+    'abascal',
+    'españa',
+    '@asambleave',
+    'baleares',
+    '@josepborrellf',
+    '@taniasandinista',
+    '@espejopublico',
+    '@senadomexicano',
+    '@jairbolsonaro',
+    '#elmundofirmeconvzla',
+    'eurocámara',
+    '@scjn',
+    '@alferdez',
+    '@mjmonteroc',
+    '@kicillofok',
+    '#efeverifica',
+    '@ivanedlm',
+    '@petrogustavo',
+    '@santi_abascal',
+    '@ivanduque',
+    'españoles',
+    '@jguaido',
+    '@ralitodigitai',
+    '#honduras',
+    '#nicaragua',
+    '#opcdmx',
+    '#redamlo',
+    '@foxnews',
+    '@ccctdf',
+    '@enriquepenalosa',
+    'bogotá',
+    '#venezuelaselevantó',
+    '#fútbolhd',
+    'podemita',
+    '#eleccionesgenerales10n',
+    '#españasiempre',
+    'macron',
+    'shakira',
+    'jlo',
+    'taurina',
+    'taurino',
+    'catalán',
+    'abascal',
+    'podemitas',
+    '#voxútil',
+    '#tucumánencrisis',
+    '#evonoestassolo',
+    '#ecuadorencrisis',
+    '#vivaespaña',
+    '#plomo19',
+    '#redfsln',
+    'generalitat',
+    'peñalosa',
+    '#brasil',
+    '🇪🇸',
+    '#españasiempre',
+    '@vox_es',
+    '#eleccionesgenerales10n',
+    '@santi_abascal',
+    '@tv3',
+    '@lopezobrador_',
+    '🇩🇴',
+    '@interiorgob',
+    '#perú',
+    '@theintercept',
+    '@europarl_es',
+    '@presidenciard',
+    'garge',
+    'garge-les-gonesse',
+    'almería',
+    '#chicasvox',
+    '#motivosparalamción',
+    '@irenemontero',
+    '@lasextatv',
+    '@todoesmentiratv',
+    '@libertaddigital',
+    '#costarica',
+    '#puertorico',
+    '#guyana',
+    '@cruzrojaesp',
+    '@estadodealarmatv',
+    '#canarias',
+    '@inm_rd',
+    '@latinus_us',
+    '@eldiarioes',
+    '@inami_mx',
+    '#melilla',
+    '#primeroespaña',
+    'marruecos',
+    'melilla',
+    '@dgmrd',
+    '#granada',
+    '#brazil',
+    '#ukrainecrisis',
+    '#vergüenzaenlaue',
+    '@statedept',
+    '@usembcuba',
+    '#marchapatrioticard'
 ]
 
 [noise.account_ids]
@@ -1219,4 +1450,56 @@ known_users = [
     974739271654543367, #Roberto80994679
     3090326517, #AngelBlackmen	
     2755279044, #MultaniLuis
+    49849732, # petrogustavo
+    2802545808, # Almagro_OEA2015
+    59029006, # watcher_ven
+    14285962, # PamelaCDMX
+    14510250, # culoman
+    224916991, # MilagrosLeivaG
+    190396895, # ESPNmx
+    202282454, # PoliciaEcuador
+    151198642, # revisbarcelona
+    19889168, # Notimex
+    72811133, # MundoMaldini
+    121385551, # europapress
+    70539007, # MirandaBogota
+    248692867, # canalN_
+    15198783, # gerardoromo
+    144376833, # FelipeCalderon
+    15648827, # muyinteresante
+    16676396, # El_Universal_Mx
+    71303860, # TUDNMEX
+    152142811, # Telemundonews
+    200267797, # NTN24ve
+    108192135, # EP_Mundo
+    79939248, # antena3com
+    221378668, # ReporteYa
+    44186827, # Telemedellin
+    49339195, # PanamericanaTV
+    110822488, # Gestionpe
+    295608887, # guardiacivil
+    244218738, # SinEmbargoMX
+    438425941 , # MinSegPma
+    257744105 , # PetterBscManuel
+    1103418106058338304 , # RagliantiPaulo
+    2732484341 , # BigBlueBahamas
+    2228836498 , # isamustang73 Barcelona
+    4034128936 , # anonym0usAnon
+    291468627 , # ale_paz06
+    3043559361 , # AgendaPanoramas
+    1124504628 , # porCausaorg
+    113121550 , # Pulpeins
+    360874005 , # MinCulturaPe
+    773407171, # SpaniardWar
+    95094897, # NutricionTotal
+    20560294, # WRadioColombia
+    27708897, # Reforma
+    57986415, # tve_tve
+    119051398, # ElFinanciero_Mx
+    208413101, # AgenciaTelam
+    131967942, # VarskySports
+    94429039, # futpicante
+    35977487, # lajornadaonline
+    499098974, # tourism consulting
+    358534226 , # JosueGamezNic
 ]
