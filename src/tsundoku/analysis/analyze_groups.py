@@ -288,9 +288,13 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
         )
         return dd.read_parquet(users_target_path, lines=True)["user.id"].values
 
-    user_groups = dd.read_parquet(
-        processed_path / f"{aggregation_group}.classification.predictions.parquet"
-    ).set_index("user.id")
+    user_groups = (
+        dd.read_parquet(
+            processed_path / f"{aggregation_group}.classification.predictions.parquet"
+        )
+        .set_index("user.id")
+        .compute()
+    )
 
     invalid_users = set(user_groups[user_groups["predicted_class"] == "noise"].index)
 
@@ -306,7 +310,12 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
         )
     )
 
+    schema = USERS_DTYPES.append(pa.field(f"predicted.{aggregation_group}", pa.string()))
+
+    user_predictions = None
+
     for group_name in ["location", "person"]:
+        schema = schema.append(pa.field(f"predicted.{group_name}", pa.string()))
         predictions_path = (
             processed_path / f"{group_name}.classification.predictions.parquet"
         )
@@ -317,19 +326,33 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
             )
             continue
 
-        user_predictions = dd.read_parquet(predictions_path).set_index("user.id")
-        invalid_users = invalid_users | set(
-            user_predictions[user_predictions["predicted_class"] == "noise"].index
-        )
-        users = users.join(
-            user_predictions["predicted_class"].rename(f"predicted.{group_name}"),
-            how="inner",
-        )
-        logging.info(
-            f"prediction type {group_name} found! updated #users: {len(users)}"
+        group_predictions = (
+            dd.read_parquet(predictions_path)
+            .set_index("user.id")
+            .rename(columns={"predicted_class": f"predicted.{group_name}"})
+            .compute()
         )
 
-    users = users.reset_index().pipe(lambda x: x[~x["user.id"].isin(invalid_users)])
+        invalid_users = invalid_users | set(
+            group_predictions[
+                group_predictions[f"predicted.{group_name}"] == "noise"
+            ].index
+        )
+
+        group_predictions = group_predictions.pipe(
+            lambda x: x[x[f"predicted.{group_name}"] != "noise"]
+        )
+
+        if user_predictions is None:
+            user_predictions = group_predictions[[f"predicted.{group_name}"]]
+        else:
+            user_predictions = user_predictions.join(
+                group_predictions[[f"predicted.{group_name}"]], how="inner"
+            )
+
+        logging.info(f"prediction type {group_name} found!")
+
+    users = users.join(user_predictions, how="inner").reset_index()
 
     logging.info(f"users: #valid: {len(users)}, #invalid {len(invalid_users)}")
     logging.info(f"user consolidation with groups -> {users_target_path}")
@@ -338,11 +361,11 @@ def consolidate_users(processed_path, target_path, aggregation_group, overwrite=
         target_path,
         name_function=lambda i: f"user.consolidated_groups{f'_{i}' if i != 0 else ''}.parquet",
         engine="pyarrow",
-        schema=USERS_DTYPES,
+        schema=schema,
         use_dictionary=False,
     )
 
-    return users.compute()["user.id"].values
+    return users["user.id"].compute().values
 
 
 def identify_network_lcc(

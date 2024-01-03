@@ -24,8 +24,9 @@ USERS_DTYPES = pa.schema(
         pa.field("user.description_tokens", pa.list_(pa.string())),
         pa.field("user.name_tokens", pa.list_(pa.string())),
         pa.field("user.dataset_tweets", pa.int64()),
-        pa.field("predicted.stance", pa.string()),
-        pa.field("predicted.person", pa.string()),
+        #pa.field("predicted.stance", pa.string()),
+        #pa.field("predicted.person", pa.string()),
         pa.field("__null_dask_index__", pa.int64()),
     ]
 )
+
