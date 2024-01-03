@@ -16,11 +16,11 @@ PYTHON_INTERPRETER = python
 CURRENT_ENV := $(CONDA_DEFAULT_ENV)
 
 
-ifeq (,$(shell which conda))
+ifeq (,$(shell which mamba))
 HAS_CONDA=False
 else
 HAS_CONDA=True
-CONDA := $(shell which conda)
+CONDA := $(shell which mamba)
 ifeq ($(CONDA_DEFAULT_ENV),$(ENV_NAME))
 ENV_IS_ACTIVE=True
 else
@@ -108,6 +108,16 @@ flatten-data:
 ## install jupyter notebook kernel
 install-kernel:
 	conda run --name '$(ENV_NAME)' python -m ipykernel install --user --name '$(ENV_NAME)' --display-name "Python ($(ENV_NAME))"
+
+## install pytorch and 🤗 Transformers
+install-torch-gpu:
+	conda run --name '$(ENV_NAME)' pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+	conda run --name '$(ENV_NAME)' pip install transformers
+
+## install pytorch and 🤗 Transformers
+install-torch-cpu:
+	conda run --name '$(ENV_NAME)' pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+	conda run --name '$(ENV_NAME)' pip install transformers
 
 
 #################################################################################
