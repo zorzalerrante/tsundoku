@@ -26,7 +26,7 @@ def main():
     logger.info("flattening incoming data")
 
     files = sorted(glob.glob(f"{os.environ['INCOMING_PATH']}/*.gz"))
-    target = Path(os.environ["TWEET_PATH"])
+    target = Path(os.environ["JSON_TWEET_PATH"])
 
     languages = list(os.environ.get("TSUNDOKU_LANGUAGES", "es|und").split("|"))
     logger.info(f"accepted languages: {languages}")
