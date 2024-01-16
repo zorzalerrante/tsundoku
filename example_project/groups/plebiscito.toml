@@ -1,0 +1,105 @@
+[apruebo]
+title = 'Apruebo'
+undisclosed_title = 'Indecisos(as)/Sin Postura Explícita'
+
+[apruebo.user_name]
+must_have = [
+    '#apruebo',
+    '#apruebocc',
+    '#yoapruebo',
+    '#sipoapruebo',
+    '#yoapruebocc',
+    '#apruebonuevaconstitucion',
+    '#yoapruebonuevaconstitucion',
+    '#yoapruebonuevaconstitución',
+    '#apruebonuevaconstitución',
+    '#convencionconstitucional',
+    '#convenciónconstitucional',
+]
+
+[apruebo.description_token]
+must_have = [
+    '#apruebo',
+    '#convencionconstitucional',
+    '#convenciónconstitucional',
+    '#yoapruebocc',
+]
+
+[apruebo.tweet_tokens]
+must_have = [
+    '#apruebo',
+    '#apruebocc',
+    '#yoapruebo',
+    '#sipoapruebo',
+    '#yoapruebocc',
+    '#apruebonuevaconstitucion',
+    '#yoapruebonuevaconstitucion',
+    '#yoapruebonuevaconstitución',
+    '#apruebonuevaconstitución',
+    '#convencionconstitucional',
+    '#convenciónconstitucional',
+    '#apruebo4deseptiembre',
+    '#apruebofeliz'
+]
+
+#[apruebo.domain]
+#must_have = ['apoderadosboric.cl', 'boricpresidente.cl', 'seguimos.cl']
+
+[apruebo.account_ids]
+# these were determined from the popularity lists after the first iteration (top-50)
+known_users = [
+    146542753,           # danieljadue
+    225445834,           # camila_vallejo
+    104020962,           # KarolCariola
+    59215690,            # GiorgioJackson
+    61524459,            # gonzalowinter
+    73981088,            # gabrielboric
+    225445834,           # camila_vallejo
+    59215690,            # GiorgioJackson
+    146542753,           # danieljadue
+]
+
+[rechazo]
+title = 'Rechazo'
+
+[rechazo.user_name]
+must_have = [
+    '#rechazo',
+    '#yorechazo',
+    '#yovotorechazo',
+    '#votorechazo',
+    '#rechazocrece',
+    '#votarechazo',
+    '#yorechazonuevaconstitucion',
+    '#rechazonuevaconstitucion',
+    '#rechazoganaenoctubre',
+    '#rechazonuevaconstitución',
+]
+
+[rechazo.description_token]
+must_have = [
+    '#rechazo',
+    '#yorechazo',
+    '#yovotorechazo',
+    '#rechazodesalida'
+]
+
+[rechazo.tweet_tokens]
+must_have = [
+    '#rechazo',
+    '#yorechazo',
+    '#yovotorechazo',
+    '#rechazoporchile',
+    '#rechazotransversal'
+]
+
+#[rechazo.domain]
+#must_have = ['apoderadosdemesa.cl']
+
+[rechazo.account_ids]
+known_users = [
+    123955962,           # joseantoniokast
+    738092057873555456,  # equipokast
+    212552510,           # carreragonzalo
+    154158378,           # RojoEdwards
+]
