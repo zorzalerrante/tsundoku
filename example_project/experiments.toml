@@ -73,12 +73,12 @@ total_degree = 2
 order = ['relevant', 'undisclosed', 'noise']
 
 [relevance.xgb]
-learning_rate = 0.2
-max_depth = 7
+learning_rate = 0.25
+max_depth = 8
 subsample = 0.95
 n_estimators = 250
 max_delta_step = 1
-n_jobs = 8
+n_jobs = 6
 random_state = 42
 objective = 'binary:logistic'
 
@@ -86,14 +86,14 @@ objective = 'binary:logistic'
 [relevance.pipeline]
 early_stopping_rounds = 10
 eval_fraction = 0.05
-threshold_offset_factor = 0.15
+threshold_offset_factor = 0.1
 
 
 [stance]
 order = ['empathy', 'undisclosed', 'threat']
 
 [stance.xgb]
-learning_rate = 0.175
+learning_rate = 0.25
 max_depth = 3
 subsample = 0.95
 n_estimators = 250
@@ -107,17 +107,35 @@ early_stopping_rounds = 10
 eval_fraction = 0.05
 threshold_offset_factor = 0.15
 
+[plebiscito]
+order = ['apruebo', 'undisclosed', 'rechazo']
+
+[plebiscito.xgb]
+learning_rate = 0.25
+max_depth = 4
+subsample = 0.95
+n_estimators = 100
+max_delta_step = 1
+n_jobs = 8
+random_state = 42
+objective = 'binary:logistic'
+
+[plebiscito.pipeline]
+early_stopping_rounds = 10
+eval_fraction = 0.05
+threshold_offset_factor = 0.15
+
 
 [person]
 order = ['male', 'female', 'institutional', 'undisclosed']
 
 [person.xgb]
-learning_rate = 0.175
+learning_rate = 0.2
 max_depth = 3
 subsample = 0.95
 n_estimators = 250
 max_delta_step = 1
-n_jobs = 2
+n_jobs = 8
 random_state = 42
 objective = 'multi:softmax'
 
@@ -127,18 +145,36 @@ eval_fraction = 0.1
 threshold_offset_factor = 0.2
 
 [location]
+order = [
+    'rm',
+    'loslagos',
+    'biobio',
+    'araucania',
+    'valparaiso',
+    'antofagasta',
+    'maule',
+    'atacama',
+    'ohiggins',
+    'coquimbo',
+    'losrios',
+    'aysen',
+    'arica',
+    'magallanes',
+    'nuble',
+    'tarapaca'
+]
 
 [location.xgb]
-learning_rate = 0.15
-max_depth = 4
+learning_rate = 0.25
+max_depth = 8
 subsample = 0.95
-n_estimators = 300
+n_estimators = 500
 max_delta_step = 1
-n_jobs = 2
+n_jobs = 4
 random_state = 42
 objective = 'multi:softmax'
 
 [location.pipeline]
 early_stopping_rounds = 10
 eval_fraction = 0.1
-threshold_offset_factor = 0.05
+threshold_offset_factor = 0.3
