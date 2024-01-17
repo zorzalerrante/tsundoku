@@ -19,7 +19,8 @@ from tsundoku.utils.files import read_toml
 
 @click.command()
 @click.option("--experiment", type=str, default="full")
-def main(experiment):
+@click.option("--group", type=str, default="stance")
+def main(experiment, group):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -51,6 +52,8 @@ def main(experiment):
     experimental_settings = experiment_config["experiments"][experiment_name]
     logging.info(f"Experimental settings: {experimental_settings}")
 
+    anomaly_settings = experimental_settings.get('anomalies', {})
+
     processed_path = (
         Path(config["path"]["data"]) / "processed" / experimental_settings.get("key")
     )
@@ -58,11 +61,12 @@ def main(experiment):
     user_data = dd.read_parquet(
         processed_path / "consolidated/user.consolidated_groups.parquet",
         engine="pyarrow",
-    )
+    ).compute()
+
     user_daily_stats = dd.read_parquet(
         processed_path / "consolidated/user.daily_stats.parquet",
         engine="pyarrow",
-    )
+    ).compute()
 
     user_content_volume = user_daily_stats.groupby("user.id")[
         [
@@ -80,39 +84,44 @@ def main(experiment):
         "feature.transformed_"
     )
 
+    #print(user_data.columns)
+
     user_data["feature.ratio_friends_over_followers"] = np.log(
         user_data["user.friends_count"] + 1
     ) / np.log(user_data["user.followers_count"] + 1)
+
 
     user_data["feature.n_digits_username"] = (
         user_data["user.screen_name"]
         .astype(str)
         .fillna("")
-        .apply(lambda x: sum(c.isdigit() for c in x), meta=("user.screen_name", "str"))
+        .apply(lambda x: sum(c.isdigit() for c in x))
     )
+
 
     # user_data["feature.default_profile_image"] = (
     #     user_data["user.default_profile_image"].astype(int).fillna(0)
     # )
 
-    print(user_data.columns)
+    
 
     # TO DO - ERROR:
     # raise TypeError(f"Invalid value '{str(value)}' for dtype {self.dtype}")
     # TypeError: Invalid value '' for dtype Float64
     for col in user_data.columns:
-        if user_data[col].dtype == "Float64":
-            user_data[col].fillna(0)
+        print(col, user_data[col].dtype, user_data[col].dtype == "float64")
+        if user_data[col].dtype == "float64":
+            user_data[col] = user_data[col].fillna(0.0)
         elif user_data[col].dtype == object:
-            user_data[col].fillna("")
+            user_data[col] = user_data[col].fillna("")
 
-    user_features = user_data.fillna("").join(user_transformed_volume, on="user.id")
+    user_features = user_data.join(user_transformed_volume, on="user.id")
 
     for network in ["retweet", "quote", "reply"]:
         network_components = dd.read_parquet(
             processed_path
             / f"consolidated/network.{network}_filtered_node_components.parquet"
-        ).set_index("index")
+        ).set_index("index").compute()
 
         component_count = network_components["network_component"].value_counts()
         component_count = component_count[component_count >= 10]
@@ -123,7 +132,7 @@ def main(experiment):
             network_components[
                 network_components["network_component"].isin(component_count.index)
             ]
-            .rename({"network_component": f"feature.{network}_component"}, axis=1)
+            .rename(columns={"network_component": f"feature.{network}_component"})
             .pipe(
                 lambda x: pd.get_dummies(
                     x[f"feature.{network}_component"],
@@ -150,7 +159,7 @@ def main(experiment):
         user_features["user.dataset_tweets"] / user_features["feature.active_days"]
     )
 
-    if "account_age_reference" in experimental_settings["anomalies"]:
+    if "account_age_reference" in anomaly_settings:
         user_features["__ref_age__"] = datetime.datetime(
             *experimental_settings["anomalies"]["account_age_reference"]
         )
@@ -183,12 +192,14 @@ def main(experiment):
                 user_features["feature.active_days"]
             )
 
-    user_daily_max = user_daily_stats.loc[
-        user_daily_stats.groupby(["user.id"])["date"].idxmax()
-    ]
-    user_daily_min = user_daily_stats.loc[
-        user_daily_stats.groupby(["user.id"])["date"].idxmin()
-    ]
+    user_daily_stats['datetime'] = pd.to_datetime(user_daily_stats['date'])
+
+    idx_min = user_daily_stats.reset_index().groupby(["user.id"])["datetime"].idxmax()
+    idx_max = user_daily_stats.reset_index().groupby(["user.id"])["datetime"].idxmax()
+
+    user_daily_max = user_daily_stats.reset_index().loc[idx_min.values]
+    user_daily_min = user_daily_stats.reset_index().loc[idx_max.values]
+
     user_daily_diff = pd.concat([user_daily_max, user_daily_min])
 
     def shift(df, column):
@@ -215,7 +226,7 @@ def main(experiment):
 
     user_daily_status_diff = pd.merge(
         shift(user_daily_diff, "user.statuses_count"),
-        user_daily_max[["user.id", "predicted.stance"]],
+        user_daily_max[["user.id", f"predicted.{group}"]],
         on="user.id",
         how="left",
     )
@@ -228,7 +239,7 @@ def main(experiment):
 
     user_daily_followers_diff = pd.merge(
         shift(user_daily_diff, "user.followers_count"),
-        user_daily_max[["user.id", "predicted.stance"]],
+        user_daily_max[["user.id", f"predicted.{group}"]],
         on="user.id",
         how="left",
     )
@@ -242,7 +253,7 @@ def main(experiment):
 
     user_daily_friends_diff = pd.merge(
         shift(user_daily_diff, "user.friends_count"),
-        user_daily_max[["user.id", "predicted.stance"]],
+        user_daily_max[["user.id", f"predicted.{group}"]],
         on="user.id",
         how="left",
     )
@@ -263,23 +274,21 @@ def main(experiment):
     feature_matrix = feature_matrix.set_index("user.id")
     feature_matrix = feature_matrix.fillna(0)
 
-    print(experimental_settings["anomalies"])
-
     model = IsolationForest(
-        n_estimators=experimental_settings["anomalies"].get("n_estimators", 100),
-        max_samples=experimental_settings["anomalies"].get("max_samples", 1000),
-        contamination=experimental_settings["anomalies"].get("contamination", "auto"),
-        max_features=experimental_settings["anomalies"].get("max_features", 1.0),
-        n_jobs=int(experimental_settings["anomalies"].get("n_jobs", 2)),
-        random_state=experimental_settings["anomalies"].get("random_state", 666),
-        verbose=experimental_settings["anomalies"].get("verbose", 1),
+        n_estimators=anomaly_settings.get("n_estimators", 100),
+        max_samples=anomaly_settings.get("max_samples", 1000),
+        contamination=anomaly_settings.get("contamination", "auto"),
+        max_features=anomaly_settings.get("max_features", 1.0),
+        n_jobs=int(anomaly_settings.get("n_jobs", 2)),
+        random_state=anomaly_settings.get("random_state", 666),
+        verbose=anomaly_settings.get("verbose", 1),
     )
     model.fit(feature_matrix.values)
 
     feature_matrix["anomaly.score"] = model.decision_function(feature_matrix.values)
 
     results_matrix = feature_matrix.join(
-        user_data[["user.id", "predicted.stance", "user.screen_name"]].set_index(
+        user_data[["user.id", f"predicted.{group}", "user.screen_name"]].set_index(
             "user.id"
         )
     )
